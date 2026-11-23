@@ -16,6 +16,7 @@ export interface LaunchRequest {
 
 export interface ProcStat {
   pid: number;
+  /** True also when the process exists but may not be opened; then the other fields are absent. */
   alive: boolean;
   /** Process creation time, ISO 8601 UTC with ms. */
   startTime?: string;
@@ -28,8 +29,17 @@ export interface ProcStat {
 export interface Helper {
   launch(r: LaunchRequest): Promise<{ pid: number; startTime: string }>;
   stats(pids: number[]): Promise<ProcStat[]>;
-  ctrlC(pid: number): Promise<void>;
-  kill(pid: number): Promise<boolean>;
+  /**
+   * Sends Ctrl+C to the process's console. With `startTime` (as launch/stats return it), rejects when the pid now
+   * belongs to a different process.
+   */
+  ctrlC(pid: number, startTime?: string): Promise<void>;
+  /**
+   * Kills the process tree; false if it was already gone. With `startTime`, rejects when the pid now belongs to a
+   * different process. Rejects (never returns false) when the process exists but may not be terminated.
+   */
+  kill(pid: number, startTime?: string): Promise<boolean>;
+  /** Creates the local user if missing, sets a new random password and grants its logon rights. Needs admin. */
   ensureUser(name: string): Promise<{ created: boolean; password: string }>;
 }
 
@@ -42,10 +52,10 @@ export function createHelper(helperPath: string): Helper {
   return {
     launch: (r) => call("launch", r),
     stats: async (pids) => (await call<{ processes: ProcStat[] }>("stats", { pids })).processes,
-    ctrlC: async (pid) => {
-      await call("ctrlc", { pid });
+    ctrlC: async (pid, startTime) => {
+      await call("ctrlc", { pid, startTime });
     },
-    kill: async (pid) => (await call<{ killed: boolean }>("kill", { pid })).killed,
+    kill: async (pid, startTime) => (await call<{ killed: boolean }>("kill", { pid, startTime })).killed,
     ensureUser: (name) => call("ensure-user", { name }),
   };
 }

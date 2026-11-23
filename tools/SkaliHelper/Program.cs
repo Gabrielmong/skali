@@ -30,6 +30,8 @@ try
         "stats" => Stats.Run(request),
         "ctrlc" => CtrlC.Run(request),
         "kill" => Kill.Run(request),
+        "ensure-user" => Users.Ensure(request),
+        "delete-user" => Users.Delete(request),
         _ => throw new HelperException($"unknown verb: {verb}"),
     };
     return Respond(response, 0);

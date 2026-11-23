@@ -7,14 +7,67 @@ namespace SkaliHelper;
 /// <summary>Process handles, creation times and descendant lookup (Toolhelp32 snapshot) shared by stats and kill.</summary>
 internal static class ProcessTree
 {
-    /// <summary>Opens a live process, or returns IntPtr.Zero if it doesn't exist / has exited / can't be opened.</summary>
-    public static IntPtr OpenAlive(int pid, uint access)
+    /// <summary>What we could find out about a pid.</summary>
+    public enum State
+    {
+        /// <summary>No such process (or it has exited).</summary>
+        Dead,
+        /// <summary>Alive, opened with the requested access.</summary>
+        Alive,
+        /// <summary>Alive, but only opened with PROCESS_QUERY_LIMITED_INFORMATION (the requested access was denied).</summary>
+        Limited,
+        /// <summary>It exists, but we may not open it at all. Must never be treated as dead.</summary>
+        Denied,
+    }
+
+    /// <summary>
+    /// Opens <paramref name="pid"/>. Only a pid that doesn't exist (or has exited) is <see cref="State.Dead"/>:
+    /// access denied means someone else's live process, and reading that as dead could launch a second copy of a game
+    /// on the same world. The handle is non-zero for Alive and Limited; the caller closes it.
+    /// </summary>
+    public static (State State, IntPtr Handle) Open(int pid, uint access)
     {
         var h = OpenProcess(access | SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
-        if (h == IntPtr.Zero) return IntPtr.Zero;
-        if (WaitForSingleObject(h, 0) == WAIT_TIMEOUT) return h;
-        CloseHandle(h); // exited, only kept around by someone's handle
+        if (h != IntPtr.Zero)
+        {
+            if (WaitForSingleObject(h, 0) == WAIT_TIMEOUT) return (State.Alive, h);
+            CloseHandle(h); // exited, only kept around by someone's handle
+            return (State.Dead, IntPtr.Zero);
+        }
+        if (Marshal.GetLastPInvokeError() == ERROR_INVALID_PARAMETER) return (State.Dead, IntPtr.Zero);
+
+        // Denied (or another failure): the process exists. See whether we can at least query it.
+        h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (h == IntPtr.Zero)
+            return Marshal.GetLastPInvokeError() == ERROR_INVALID_PARAMETER ? (State.Dead, IntPtr.Zero) : (State.Denied, IntPtr.Zero);
+        // No SYNCHRONIZE here, so use the exit code. A process that exited with 259 reads as alive: the safe side.
+        if (!GetExitCodeProcess(h, out var code) || code == STILL_ACTIVE) return (State.Limited, h);
+        CloseHandle(h);
+        return (State.Dead, IntPtr.Zero);
+    }
+
+    /// <summary>
+    /// Opens a live process with <paramref name="access"/>, or returns IntPtr.Zero if it's dead or can't be opened
+    /// that way. Only for best-effort work on descendants; use <see cref="Open"/> for the process the caller named.
+    /// </summary>
+    public static IntPtr OpenAlive(int pid, uint access)
+    {
+        var (state, h) = Open(pid, access);
+        if (state == State.Alive) return h;
+        if (state == State.Limited && (access & ~PROCESS_QUERY_LIMITED_INFORMATION) == 0) return h;
+        if (h != IntPtr.Zero) CloseHandle(h);
         return IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Throws unless the process behind <paramref name="h"/> was created at <paramref name="startTime"/> (the format
+    /// launch/stats return). No-op when <paramref name="startTime"/> is null. Guards against a recycled pid.
+    /// </summary>
+    public static void CheckIdentity(int pid, IntPtr h, string? startTime)
+    {
+        if (startTime is null) return;
+        var created = CreationTime(h);
+        if (created == 0 || FormatTime(created) != startTime) throw new HelperException($"pid {pid} is a different process");
     }
 
     public static long CreationTime(IntPtr h) => GetProcessTimes(h, out var created, out _, out _, out _) ? created : 0;

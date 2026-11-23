@@ -139,8 +139,66 @@ describe.skipIf(process.platform !== "win32")("SkaliHelper", () => {
     await expect(p).rejects.toThrow(/nope\.exe|cannot find/i);
   }, TEST_TIMEOUT);
 
-  it("user launch is not implemented yet", async () => {
-    const p = helper.launch({ exe: fakeGamePath, args: [], cwd: tmpDir, stdoutPath: tmpFile(), user: { name: "x", password: "y" } });
-    await expect(p).rejects.toThrow("user launch not implemented");
+  it("launch as an unknown user rejects with a LogonUser error", async () => {
+    const p = helper.launch({
+      exe: fakeGamePath,
+      args: [],
+      cwd: tmpDir,
+      stdoutPath: tmpFile(),
+      user: { name: "SkaliNoSuchUser", password: "not-a-password" },
+    });
+    await expect(p).rejects.toBeInstanceOf(HelperError);
+    await expect(p).rejects.toThrow(/LogonUser/);
+  }, TEST_TIMEOUT);
+
+  // Identity checks: a recorded pid may have been reused by another process; kill/ctrlc must refuse it.
+  const OTHER_START = "2001-01-01T00:00:00.000Z";
+
+  it("kill with matching startTime kills", async () => {
+    const { pid, startTime, out } = await launch(["--ready-after", "0"]);
+    await waitForFile(out, /READY/);
+    expect(await helper.kill(pid, startTime)).toBe(true);
+    await waitDead(pid);
+  }, TEST_TIMEOUT);
+
+  it("kill with a different startTime refuses and leaves the process alive", async () => {
+    const { pid, out } = await launch(["--ready-after", "0"]);
+    await waitForFile(out, /READY/);
+    const p = helper.kill(pid, OTHER_START);
+    await expect(p).rejects.toBeInstanceOf(HelperError);
+    await expect(p).rejects.toThrow(`pid ${pid} is a different process`);
+    await new Promise((r) => setTimeout(r, 300));
+    expect((await helper.stats([pid]))[0].alive).toBe(true);
+  }, TEST_TIMEOUT);
+
+  it("ctrlc with matching startTime saves", async () => {
+    const { pid, startTime, out } = await launch(["--ready-after", "0"]);
+    await waitForFile(out, /READY/);
+    await helper.ctrlC(pid, startTime);
+    await waitForFile(out, /SAVED/);
+    await waitDead(pid);
+  }, TEST_TIMEOUT);
+
+  it("ctrlc with a different startTime refuses and leaves the process alive", async () => {
+    const { pid, out } = await launch(["--ready-after", "0"]);
+    await waitForFile(out, /READY/);
+    const p = helper.ctrlC(pid, OTHER_START);
+    await expect(p).rejects.toBeInstanceOf(HelperError);
+    await expect(p).rejects.toThrow(`pid ${pid} is a different process`);
+    await new Promise((r) => setTimeout(r, 1000));
+    expect((await helper.stats([pid]))[0].alive).toBe(true);
+    expect(readOut(out)).not.toMatch(/SAVING/);
+  }, TEST_TIMEOUT);
+
+  // A process we may not open must never read as dead (that could start a second copy on the same world).
+  // The System process (pid 4) can't be opened with SYNCHRONIZE by a non-SYSTEM caller.
+  it("stats reports a process we can't fully open as alive", async () => {
+    const [s] = await helper.stats([4]);
+    expect(s).toMatchObject({ pid: 4, alive: true });
+  }, TEST_TIMEOUT);
+
+  it("kill of a process we may not terminate rejects instead of reporting it gone", async () => {
+    // Safe: the System process can't be terminated by anyone, and a non-SYSTEM caller can't even get PROCESS_TERMINATE.
+    await expect(helper.kill(4)).rejects.toBeInstanceOf(HelperError);
   }, TEST_TIMEOUT);
 });

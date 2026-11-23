@@ -30,6 +30,31 @@ internal static unsafe class Native
     public const uint CTRL_C_EVENT = 0;
 
     public const int ERROR_ACCESS_DENIED = 5;
+    public const int ERROR_INVALID_PARAMETER = 87;
+    public const int ERROR_PRIVILEGE_NOT_HELD = 1314;
+    public const int ERROR_NONE_MAPPED = 1332;
+    public const int SidTypeUser = 1;
+    public const uint STILL_ACTIVE = 259;
+
+    public const int LOGON32_LOGON_BATCH = 4;
+    public const int LOGON32_PROVIDER_DEFAULT = 0;
+    public const int PI_NOUI = 1;
+    public const uint SE_PRIVILEGE_ENABLED = 0x2;
+    public const uint TOKEN_ADJUST_PRIVILEGES = 0x20, TOKEN_QUERY = 0x8;
+
+    // netapi32
+    public const int NERR_Success = 0;
+    public const int NERR_UserNotFound = 2221;
+    public const int NERR_UserExists = 2224;
+    public const int USER_PRIV_USER = 1;
+    public const int UF_SCRIPT = 0x0001;
+    public const int UF_PASSWD_CANT_CHANGE = 0x0040;
+    public const int UF_DONT_EXPIRE_PASSWD = 0x10000;
+    public const int MAX_PREFERRED_LENGTH = -1;
+
+    // LSA
+    public const uint POLICY_LOOKUP_NAMES = 0x800, POLICY_CREATE_ACCOUNT = 0x10;
+    public const uint STATUS_OBJECT_NAME_NOT_FOUND = 0xC0000034;
 
     public static readonly IntPtr INVALID_HANDLE_VALUE = new(-1);
     public static readonly IntPtr PROC_THREAD_ATTRIBUTE_HANDLE_LIST = 0x00020002;
@@ -82,6 +107,143 @@ internal static unsafe class Native
         public UIntPtr PeakWorkingSetSize, WorkingSetSize, QuotaPeakPagedPoolUsage, QuotaPagedPoolUsage,
             QuotaPeakNonPagedPoolUsage, QuotaNonPagedPoolUsage, PagefileUsage, PeakPagefileUsage;
     }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct PROFILEINFO
+    {
+        public int dwSize, dwFlags;
+        public string lpUserName;
+        public string? lpProfilePath, lpDefaultPath, lpServerName, lpPolicyPath;
+        public IntPtr hProfile;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct LUID_AND_ATTRIBUTES
+    {
+        public long Luid;
+        public uint Attributes;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct TOKEN_PRIVILEGES
+    {
+        public int PrivilegeCount;
+        public LUID_AND_ATTRIBUTES Privilege; // one is enough for us
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct USER_INFO_1
+    {
+        public string usri1_name, usri1_password;
+        public int usri1_password_age, usri1_priv;
+        public string? usri1_home_dir, usri1_comment;
+        public int usri1_flags;
+        public string? usri1_script_path;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct USER_INFO_1003
+    {
+        public string usri1003_password;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct USER_INFO_1008
+    {
+        public int usri1008_flags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct LSA_UNICODE_STRING
+    {
+        public ushort Length, MaximumLength;
+        public IntPtr Buffer;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct LSA_OBJECT_ATTRIBUTES
+    {
+        public int Length;
+        public IntPtr RootDirectory, ObjectName;
+        public uint Attributes;
+        public IntPtr SecurityDescriptor, SecurityQualityOfService;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
+
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetCurrentProcess();
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool LogonUserW(string lpszUsername, string? lpszDomain, string lpszPassword, int dwLogonType, int dwLogonProvider, out IntPtr phToken);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool OpenProcessToken(IntPtr processHandle, uint desiredAccess, out IntPtr tokenHandle);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool LookupPrivilegeValueW(string? lpSystemName, string lpName, out long lpLuid);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool AdjustTokenPrivileges(IntPtr tokenHandle, bool disableAllPrivileges, ref TOKEN_PRIVILEGES newState, int bufferLength, IntPtr previousState, IntPtr returnLength);
+
+    [DllImport("userenv.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool LoadUserProfileW(IntPtr hToken, ref PROFILEINFO lpProfileInfo);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    public static extern bool UnloadUserProfile(IntPtr hToken, IntPtr hProfile);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool LookupAccountNameW(string? lpSystemName, string lpAccountName, byte[]? sid, ref int cbSid,
+        char[]? referencedDomainName, ref int cchReferencedDomainName, out int peUse);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    public static extern bool CreateEnvironmentBlock(out IntPtr lpEnvironment, IntPtr hToken, bool bInherit);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    public static extern bool DestroyEnvironmentBlock(IntPtr lpEnvironment);
+
+    [DllImport("userenv.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool DeleteProfileW(string lpSidString, string? lpProfilePath, string? lpComputerName);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool CreateProcessAsUserW(IntPtr hToken, string? lpApplicationName, char* lpCommandLine, IntPtr lpProcessAttributes,
+        IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, char* lpEnvironment, string? lpCurrentDirectory,
+        ref STARTUPINFOEX lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
+
+    [DllImport("netapi32.dll", CharSet = CharSet.Unicode)]
+    public static extern int NetUserAdd(string? servername, int level, ref USER_INFO_1 buf, out int parmErr);
+
+    [DllImport("netapi32.dll", CharSet = CharSet.Unicode)]
+    public static extern int NetUserSetInfo(string? servername, string username, int level, ref USER_INFO_1003 buf, out int parmErr);
+
+    [DllImport("netapi32.dll", CharSet = CharSet.Unicode)]
+    public static extern int NetUserSetInfo(string? servername, string username, int level, ref USER_INFO_1008 buf, out int parmErr);
+
+    [DllImport("netapi32.dll", CharSet = CharSet.Unicode)]
+    public static extern int NetUserDel(string? servername, string username);
+
+    [DllImport("netapi32.dll", CharSet = CharSet.Unicode)]
+    public static extern int NetUserGetLocalGroups(string? servername, string username, int level, int flags, out IntPtr bufptr,
+        int prefmaxlen, out int entriesread, out int totalentries);
+
+    [DllImport("netapi32.dll")]
+    public static extern int NetApiBufferFree(IntPtr buffer);
+
+    [DllImport("advapi32.dll")]
+    public static extern uint LsaOpenPolicy(IntPtr systemName, ref LSA_OBJECT_ATTRIBUTES objectAttributes, uint desiredAccess, out IntPtr policyHandle);
+
+    [DllImport("advapi32.dll")]
+    public static extern uint LsaAddAccountRights(IntPtr policyHandle, byte[] accountSid, LSA_UNICODE_STRING[] userRights, int countOfRights);
+
+    [DllImport("advapi32.dll")]
+    public static extern uint LsaRemoveAccountRights(IntPtr policyHandle, byte[] accountSid, bool allRights, LSA_UNICODE_STRING[]? userRights, int countOfRights);
+
+    [DllImport("advapi32.dll")]
+    public static extern uint LsaClose(IntPtr policyHandle);
+
+    [DllImport("advapi32.dll")]
+    public static extern int LsaNtStatusToWinError(uint status);
 
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern bool CreateProcessW(string? lpApplicationName, char* lpCommandLine, IntPtr lpProcessAttributes,

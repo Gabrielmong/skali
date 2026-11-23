@@ -17,8 +17,10 @@ internal static class Stats
 
     private static JsonObject One(int pid)
     {
-        var h = ProcessTree.OpenAlive(pid, 0);
-        if (h == IntPtr.Zero) return new JsonObject { ["pid"] = pid, ["alive"] = false };
+        var (state, h) = ProcessTree.Open(pid, 0);
+        if (state == ProcessTree.State.Dead) return new JsonObject { ["pid"] = pid, ["alive"] = false };
+        // Exists but we may not look at it: alive, nothing else known. Never report it as dead.
+        if (state == ProcessTree.State.Denied) return new JsonObject { ["pid"] = pid, ["alive"] = true };
         long created;
         try
         {
