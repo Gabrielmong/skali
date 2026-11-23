@@ -18,3 +18,28 @@ export interface ServerRecordPublic {
   currentRunId: string | null;
   createdAt: string;
 }
+
+export interface PortSpec {
+  port: number;
+  protocol: "udp" | "tcp";
+  purpose: string;
+  forward: boolean;
+}
+
+export interface FieldSpec {
+  key: string;
+  label: string;
+  type: "text" | "number" | "switch" | "password";
+  default?: string | number | boolean;
+  help?: string;
+  min?: number;
+  max?: number;
+}
+
+export interface GameInfo {
+  id: GameId;
+  displayName: string;
+  launchFields: FieldSpec[];
+  hasCommands: boolean;
+  commandHelp?: string;
+}

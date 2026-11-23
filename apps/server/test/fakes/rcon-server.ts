@@ -25,6 +25,8 @@ export async function startFakeRcon(opts: {
   silent?: boolean;
   emptyFirst?: boolean;
   splitReplies?: boolean;
+  /** Overrides the default "reply:<command>" reply body. */
+  reply?: (command: string) => string;
 }): Promise<FakeRcon> {
   const sockets = new Set<net.Socket>();
   const server = net.createServer((sock) => {
@@ -46,7 +48,7 @@ export async function startFakeRcon(opts: {
           if (opts.emptyFirst) sock.write(packet(id, 0, ""));
           sock.write(packet(body === opts.password ? id : -1, 2, ""));
         } else if (type === 2) {
-          const reply = packet(id, 0, `reply:${body}`);
+          const reply = packet(id, 0, opts.reply ? opts.reply(body) : `reply:${body}`);
           if (opts.splitReplies) {
             sock.write(reply.subarray(0, 6));
             setTimeout(() => sock.write(reply.subarray(6)), 10);
