@@ -1,0 +1,27 @@
+{
+  "name": "skali",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm -r test",
+    "build": "pnpm --filter @skali/shared build && pnpm --filter @skali/server build && pnpm --filter @skali/web build && pnpm build:helper",
+    "build:helper": "dotnet publish tools/SkaliHelper -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o tools/SkaliHelper/publish",
+    "start": "cross-env NODE_ENV=production node apps/server/dist/main.js",
+    "dev": "concurrently -n server,web \"pnpm --filter @skali/server dev\" \"pnpm --filter @skali/web dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "typescript": "^7.0.2"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}
