@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn as nodeSpawn } from "node:child_process";
 
 /** Wrapper around tools/SkaliHelper: one helper process per call, JSON in on stdin, JSON out on stdout. */
 
@@ -45,10 +45,33 @@ export interface Helper {
 
 export class HelperError extends Error {
   override name = "HelperError";
+  constructor(message: string, readonly code?: string) {
+    super(message);
+  }
 }
 
-export function createHelper(helperPath: string): Helper {
-  const call = <T>(verb: string, request: unknown) => runHelper<T>(helperPath, verb, request);
+export type HelperVerb = "launch" | "stats" | "ctrlc" | "kill" | "ensure-user";
+export type SpawnFn = typeof nodeSpawn;
+
+export interface HelperOptions {
+  /** Per-verb call timeouts in ms. Defaults: 15 s for stats/ctrlc/kill, 60 s for launch/ensure-user. */
+  timeoutsMs?: Partial<Record<HelperVerb, number>>;
+  /** Test seam. */
+  spawn?: SpawnFn;
+}
+
+const DEFAULT_TIMEOUTS_MS: Record<HelperVerb, number> = {
+  launch: 60_000,
+  "ensure-user": 60_000,
+  stats: 15_000,
+  ctrlc: 15_000,
+  kill: 15_000,
+};
+
+export function createHelper(helperPath: string, opts: HelperOptions = {}): Helper {
+  const spawn = opts.spawn ?? nodeSpawn;
+  const call = <T>(verb: HelperVerb, request: unknown) =>
+    runHelper<T>(spawn, helperPath, verb, request, opts.timeoutsMs?.[verb] ?? DEFAULT_TIMEOUTS_MS[verb]);
   return {
     launch: (r) => call("launch", r),
     stats: async (pids) => (await call<{ processes: ProcStat[] }>("stats", { pids })).processes,
@@ -60,10 +83,31 @@ export function createHelper(helperPath: string): Helper {
   };
 }
 
-function runHelper<T>(helperPath: string, verb: string, request: unknown): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
+function runHelper<T>(spawn: SpawnFn, helperPath: string, verb: HelperVerb, request: unknown, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolveOuter, rejectOuter) => {
+    let settled = false;
+    let timer: NodeJS.Timeout | undefined;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+    const resolve = (v: T) => finish(() => resolveOuter(v));
+    const reject = (e: Error) => finish(() => rejectOuter(e));
     // detached: keeps the helper (and so the games it launches) out of libuv's kill-on-close job.
     const child = spawn(helperPath, [verb], { detached: true, windowsHide: true, stdio: "pipe" });
+    // A hung helper must not wedge its callers (a stop holding the server mutex, the supervisor tick).
+    // Caveat for `launch`: on timeout the game may already have started, with a pid we never learn; the
+    // supervisor reports a failed start and cannot track (or stop) that process.
+    timer = setTimeout(() => {
+      reject(new HelperError(`SkaliHelper ${verb} timed out after ${timeoutMs} ms`, "TIMEOUT"));
+      try {
+        child.kill();
+      } catch {
+        // already gone
+      }
+    }, timeoutMs);
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     child.stdout.on("data", (b: Buffer) => stdout.push(b));

@@ -43,3 +43,14 @@ export interface GameInfo {
   hasCommands: boolean;
   commandHelp?: string;
 }
+
+export interface RuntimeState {
+  status: ServerStatus;
+  detail?: string;
+  startedAt?: string;
+  cpuPct?: number;
+  memBytes?: number;
+  players?: { online: number; max: number } | null;
+  crashPaused: boolean;
+  runId?: string;
+}
