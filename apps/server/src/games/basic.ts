@@ -21,7 +21,12 @@ function parsePorts(text: string): PortSpec[] | null {
   return out;
 }
 
-const rconReady = (l: LaunchValues) => !!l.rconPort && !!str(l.rconPassword);
+const validPort = (v: unknown): boolean => {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= 65535;
+};
+const isSet = (v: unknown): boolean => v !== undefined && v !== null && v !== "";
+const rconReady = (l: LaunchValues) => validPort(l.rconPort) && !!str(l.rconPassword);
 
 export const basic: GameAdapter = {
   info: {
@@ -57,6 +62,9 @@ export const basic: GameAdapter = {
     const errors: string[] = [];
     if (!str(launch.exe).trim()) errors.push("Executable is required");
     if (str(launch.ports).trim() && !parsePorts(str(launch.ports))) errors.push("Ports must look like 27015/udp, 27016/tcp");
+    for (const [k, label] of [["queryPort", "Query port"], ["rconPort", "RCON port"]] as const) {
+      if (isSet(launch[k]) && !validPort(launch[k])) errors.push(`${label} must be a whole number between 1 and 65535`);
+    }
     return errors;
   },
   ports(s) {

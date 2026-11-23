@@ -37,8 +37,9 @@ export const valheim: GameAdapter = {
   validateLaunch(name: string, launch: LaunchValues) {
     const errors: string[] = [];
     const pw = str(launch.password);
+    const effName = str(launch.name) || name;
     if (pw.length < 5) errors.push("Password must be at least 5 characters");
-    else if (name && pw.toLowerCase().includes(name.toLowerCase())) errors.push("Password must not contain the server name");
+    else if (effName && pw.toLowerCase().includes(effName.toLowerCase())) errors.push("Password must not contain the server name");
     return errors;
   },
   ports(s) {

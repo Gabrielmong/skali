@@ -54,6 +54,14 @@ describe("palworld adapter", () => {
       expect(parsePalworldIni(fs.readFileSync(iniPath(f), "utf8")).get("RESTAPIEnabled")).toBe("True");
       expect(parsePalworldIni(fs.readFileSync(iniPath(f), "utf8")).get("RESTAPIPort")).toBe("8212");
     });
+    it("reports a malformed ini as BadRequest", async () => {
+      const f = tmpFolder();
+      touch(path.join(f, "DefaultPalWorldSettings.ini"), DEFAULT_INI);
+      touch(iniPath(f), "[/Script/Pal.PalGameWorldSettings]\nOptionSettings=(Difficulty=None,\n");
+      const err = await palworld.prepare(rec("palworld", f, {})).catch((e) => e);
+      expect(err).toBeInstanceOf(BadRequestError);
+      expect(err.message).toContain("PalWorldSettings.ini is malformed");
+    });
     it("fails clearly without a default ini", async () => {
       await expect(palworld.prepare(rec("palworld", tmpFolder(), {}))).rejects.toBeInstanceOf(BadRequestError);
     });

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { BadRequestError } from "../errors.js";
 import { createPalworldRest, type PalworldRest } from "../channels/palworld-rest.js";
-import { parsePalworldIni, quotePal } from "../config-formats/palworld-options.js";
+import { PalworldIniError, parsePalworldIni, quotePal } from "../config-formats/palworld-options.js";
 import type { ServerRecord } from "../servers/repo.js";
 import { splitArgs } from "../util/args.js";
 import { bool, generateSecret, num, readTextFile, str, writeIfChanged } from "../util/files.js";
@@ -84,10 +84,16 @@ export const palworld: GameAdapter = {
       text = def;
     }
     const password = s.secrets.adminPassword || generateSecret();
-    const doc = parsePalworldIni(text);
-    doc.set("RESTAPIEnabled", "True");
-    doc.set("RESTAPIPort", String(num(s.launch.restPort, 8212)));
-    doc.set("AdminPassword", quotePal(password));
+    let doc;
+    try {
+      doc = parsePalworldIni(text);
+      doc.set("RESTAPIEnabled", "True");
+      doc.set("RESTAPIPort", String(num(s.launch.restPort, 8212)));
+      doc.set("AdminPassword", quotePal(password));
+    } catch (e) {
+      if (e instanceof PalworldIniError) throw new BadRequestError(`PalWorldSettings.ini is malformed: ${e.message}`);
+      throw e;
+    }
     writeIfChanged(ini, doc.toString());
     return { secrets: { adminPassword: password } };
   },

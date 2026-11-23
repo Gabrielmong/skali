@@ -45,6 +45,13 @@ describe("basic adapter", () => {
     expect(basic.validateLaunch("n", { exe: "a.exe", ports: "bogus" })).not.toEqual([]);
     expect(basic.validateLaunch("n", { exe: "a.exe", ports: "1/udp" })).toEqual([]);
   });
+  it("range-checks query and rcon ports", () => {
+    expect(basic.validateLaunch("n", { exe: "a.exe", queryPort: 70000 })).not.toEqual([]);
+    expect(basic.validateLaunch("n", { exe: "a.exe", rconPort: 0 })).not.toEqual([]);
+    expect(basic.validateLaunch("n", { exe: "a.exe", rconPort: 1.5 })).not.toEqual([]);
+    expect(basic.validateLaunch("n", { exe: "a.exe", queryPort: 27015, rconPort: 25575 })).toEqual([]);
+    expect(basic.hasCommandsFor(rec("basic", "C:\\g", { rconPort: 99999, rconPassword: "pw" }))).toBe(false);
+  });
   it("stop is Ctrl+C", async () => {
     const ctrlC = vi.fn(async () => {});
     await basic.stop(rec("basic", "C:\\g", {}), { ctrlC });

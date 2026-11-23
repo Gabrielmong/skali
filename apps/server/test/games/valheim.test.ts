@@ -31,6 +31,11 @@ describe("valheim adapter", () => {
     expect(valheim.validateLaunch("myserver", { password: "MyServer1" })).not.toEqual([]);
     expect(valheim.validateLaunch("srv", { password: "hunter22" })).toEqual([]);
   });
+  it("checks the password against the launch name that -name receives", () => {
+    expect(valheim.validateLaunch("Record", { name: "Viking", password: "myviking1" })).not.toEqual([]);
+    expect(valheim.validateLaunch("Record", { name: "Viking", password: "myrecord1" })).toEqual([]);
+    expect(valheim.validateLaunch("Record", { password: "myrecord1" })).not.toEqual([]);
+  });
   it("has the spec ports, stop and no commands", async () => {
     const s = rec("valheim", "C:\\v", { port: 2456 });
     expect(valheim.ports(s).map((p) => [p.port, p.protocol, p.forward])).toEqual([[2456, "udp", true], [2457, "udp", true], [2458, "udp", true]]);
