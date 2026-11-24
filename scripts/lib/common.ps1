@@ -1,5 +1,8 @@
 # Shared helpers for the Windows deployment scripts. Dot-source this file; do not run it.
 
+# The one definition of the web UI port (service env SKALI_PORT, firewall rule, health check).
+$SkaliPort = 4200
+
 function Test-IsAdmin {
     $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
     $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)

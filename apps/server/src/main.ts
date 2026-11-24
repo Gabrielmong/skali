@@ -109,6 +109,8 @@ async function main(cfg: AppConfig, log: (msg: string, alsoStderr?: boolean) => 
     settings,
     logsDir: paths.logs,
     webDist: cfg.webDist,
+    deployerUrl: cfg.deployerUrl,
+    deployerTokenFile: cfg.deployerTokenFile,
     firewall,
     log,
     notify: (e) => hub?.notify(e),

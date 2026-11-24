@@ -5,10 +5,17 @@ describe("config", () => {
   it("defaults", () => {
     const c = loadConfig({});
     expect(c.dataDir).toBe("C:\\ProgramData\\Skali");
-    expect(c.port).toBe(4100);
+    expect(c.port).toBe(4200);
     expect(c.runAsCurrentUser).toBe(false);
     expect(c.initialAllowlist).toEqual(["192.168.0.150"]);
     expect(c.helperPath).toMatch(/tools[\\/]SkaliHelper[\\/]publish[\\/]SkaliHelper\.exe$/);
+  });
+  it("deployer defaults and overrides", () => {
+    const d = loadConfig({ SKALI_DATA_DIR: "D:\\x" });
+    expect(d.deployerUrl).toBe("http://127.0.0.1:4201");
+    expect(d.deployerTokenFile).toBe("C:\\SkaliDeploy\\deployer\\api-token");
+    const o = loadConfig({ SKALI_DEPLOYER_URL: "http://127.0.0.1:9", SKALI_DEPLOYER_TOKEN_FILE: "E:\\t" });
+    expect([o.deployerUrl, o.deployerTokenFile]).toEqual(["http://127.0.0.1:9", "E:\\t"]);
   });
   it("env overrides", () => {
     const c = loadConfig({ SKALI_DATA_DIR: "D:\\x", SKALI_PORT: "5000", SKALI_RUN_AS_CURRENT_USER: "1", SKALI_INITIAL_ALLOWLIST: "10.0.0.5, 10.0.0.0/24" });

@@ -104,20 +104,20 @@ describe("upgrade checks", () => {
   });
   it("refuses a foreign Host", async () => {
     await start();
-    await expect(connect({ Host: "evil.example:4100" })).rejects.toThrow("HTTP 403");
+    await expect(connect({ Host: "evil.example:4200" })).rejects.toThrow("HTTP 403");
   });
   it("refuses <hostname>.attacker.com even with a matching Origin", async () => {
     await start();
-    await expect(connect({ Host: "server-pc.attacker.com:4100", Origin: "http://server-pc.attacker.com:4100" })).rejects.toThrow("HTTP 403");
+    await expect(connect({ Host: "server-pc.attacker.com:4200", Origin: "http://server-pc.attacker.com:4200" })).rejects.toThrow("HTTP 403");
   });
   it("refuses an Origin whose host differs from Host", async () => {
     await start();
     await expect(connect({ Origin: "http://evil.example" })).rejects.toThrow("HTTP 403");
-    await expect(connect({ Host: "192.168.0.100:4100", Origin: "http://192.168.0.100:4101" })).rejects.toThrow("HTTP 403");
+    await expect(connect({ Host: "192.168.0.100:4200", Origin: "http://192.168.0.100:4201" })).rejects.toThrow("HTTP 403");
   });
   it("accepts a matching Origin and a missing one", async () => {
     await start();
-    await connect({ Host: "192.168.0.100:4100", Origin: "http://192.168.0.100:4100" });
+    await connect({ Host: "192.168.0.100:4200", Origin: "http://192.168.0.100:4200" });
     await connect();
   });
   it("refuses other paths", async () => {

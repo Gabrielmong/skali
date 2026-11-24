@@ -5,7 +5,9 @@
   "scripts": {
     "pretest": "node scripts/run-pnpm.mjs --filter @skali/shared build",
     "test": "node scripts/run-pnpm.mjs -r test",
+    "typecheck": "node scripts/run-pnpm.mjs --filter @skali/shared build && node scripts/run-pnpm.mjs --filter @skali/server typecheck && node scripts/run-pnpm.mjs --filter @skali/web typecheck && node scripts/run-pnpm.mjs --filter @skali/deployer typecheck",
     "build": "node scripts/run-pnpm.mjs --filter @skali/shared build && node scripts/run-pnpm.mjs --filter @skali/server build && node scripts/run-pnpm.mjs --filter @skali/web build && node scripts/run-pnpm.mjs build:helper",
+    "build:deployer": "node scripts/run-pnpm.mjs --filter @skali/deployer build",
     "build:helper": "dotnet publish tools/SkaliHelper -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o tools/SkaliHelper/publish",
     "start": "cross-env NODE_ENV=production node apps/server/dist/main.js",
     "dev": "concurrently -n server,web \"node scripts/run-pnpm.mjs --filter @skali/server dev\" \"node scripts/run-pnpm.mjs --filter @skali/web dev\""

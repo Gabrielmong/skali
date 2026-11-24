@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds Skali and installs or updates the NSSM service "Skali" (LocalSystem, port 4100).
+  Builds Skali and installs or updates the NSSM service "Skali" (LocalSystem, port 4200).
   Run as Administrator; re-running updates the existing service. Use -DryRun to preview: it prints every step,
   changes nothing, needs no elevation, and reports missing prerequisites as "would fail" instead of stopping.
 .PARAMETER AllowIp
@@ -16,19 +16,19 @@ Set-StrictMode -Version Latest
 . "$PSScriptRoot\lib\common.ps1"
 . "$PSScriptRoot\lib\acl.ps1"
 . "$PSScriptRoot\lib\service.ps1"
+. "$PSScriptRoot\lib\service-settings.ps1"
 
 $serviceName = 'Skali'
-$port = 4100
+$port = $SkaliPort
 $repo = (Resolve-Path "$PSScriptRoot\..").Path
 $dataDir = 'C:\ProgramData\Skali'
 $serviceLog = Join-Path $dataDir 'service.log'
 $serverDir = Join-Path $repo 'apps\server'
 $mainJs = Join-Path $serverDir 'dist\main.js'
-# NSSM stores AppParameters verbatim (no quoting), so use a path relative to AppDirectory: it never contains spaces.
-$mainJsRelative = 'apps\server\dist\main.js'
 # config.ts: helperPath = <repo>\tools\SkaliHelper\publish\SkaliHelper.exe (produced by `pnpm build`, see below)
 $helperExe = Join-Path $repo 'tools\SkaliHelper\publish\SkaliHelper.exe'
-$webRule = 'Skali web (TCP 4100)'
+$webRule = 'Skali web (TCP 4200)'
+$legacyWebRule = 'Skali web (TCP 4100)'   # port moved 4100 -> 4200; remove the old rule on upgrade
 
 if ($DryRun) { Write-Host "[dry-run] Skali installer: nothing below is executed or changed." }
 
@@ -153,25 +153,11 @@ try {
 
 # 6. Service
 $nodeArg = if ($node) { $node } else { '<node.exe>' }
-if (-not (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
-    Invoke-Step "nssm install $serviceName $nodeArg $mainJsRelative" { nssm install $serviceName $node $mainJsRelative | Out-Null } -DryRun:$DryRun
-} else {
-    Set-NssmValue $serviceName 'Application' $nodeArg -DryRun:$DryRun
-    Set-NssmValue $serviceName 'AppParameters' $mainJsRelative -DryRun:$DryRun
-}
-Set-NssmValue $serviceName 'AppDirectory' $repo -DryRun:$DryRun
-Set-NssmValue $serviceName 'ObjectName' 'LocalSystem' -DryRun:$DryRun
-Set-NssmValue $serviceName 'Start' 'SERVICE_AUTO_START' -DryRun:$DryRun
-Set-NssmValue $serviceName 'AppKillProcessTree' '0' -DryRun:$DryRun
-Set-NssmValue $serviceName 'AppStopMethodConsole' '15000' -DryRun:$DryRun
-Set-NssmValues $serviceName 'AppExit' @('Default', 'Restart') -DryRun:$DryRun
-Set-NssmValue $serviceName 'AppRestartDelay' '5000' -DryRun:$DryRun
-Set-NssmValue $serviceName 'AppStdout' $serviceLog -DryRun:$DryRun
-Set-NssmValue $serviceName 'AppStderr' $serviceLog -DryRun:$DryRun
-Set-NssmValue $serviceName 'AppRotateFiles' '1' -DryRun:$DryRun
-Set-NssmValue $serviceName 'AppRotateBytes' '10485760' -DryRun:$DryRun
-# NODE_ENV=production makes the server serve the built web app. The allowlist only seeds a NEW database.
-Set-NssmValues $serviceName 'AppEnvironmentExtra' @('NODE_ENV=production', "SKALI_INITIAL_ALLOWLIST=$($AllowIp -join ',')") -DryRun:$DryRun
+# Same definition the deployer applies later (scripts\apply-service-settings.ps1), here with AppDirectory = the repo.
+# The deployer token file is only passed when the deployer is already installed.
+$deployerTokenFile = 'C:\SkaliDeploy\deployer\api-token'
+$tokenArg = if (Test-Path -LiteralPath $deployerTokenFile) { $deployerTokenFile } else { '' }
+Set-SkaliServiceSettings -Service $serviceName -AppDirectory $repo -Node $nodeArg -InitialAllowlist ($AllowIp -join ',') -TokenFile $tokenArg -InstallIfMissing -DryRun:$DryRun
 
 # 7. Firewall for the web UI: Private profile, local subnet only, node.exe only.
 try {
@@ -181,6 +167,9 @@ try {
     }
     if (-not ($profiles | Where-Object { $_.NetworkCategory -eq 'Private' })) { Write-Warning 'No active Private network profile was found.' }
 } catch { Write-Host "Could not read the network profile: $($_.Exception.Message)" }
+Invoke-Step "Removing legacy firewall rule '$legacyWebRule' if present" {
+    Get-NetFirewallRule -DisplayName $legacyWebRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+} -DryRun:$DryRun
 Invoke-Step "Replacing firewall rule '$webRule' (inbound TCP $port, Profile Private, RemoteAddress LocalSubnet, program $nodeArg)" {
     Get-NetFirewallRule -DisplayName $webRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
     New-NetFirewallRule -DisplayName $webRule -Direction Inbound -Action Allow -Protocol TCP -LocalPort $port `

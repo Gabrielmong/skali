@@ -5,6 +5,7 @@ import { AppBar, Box, Button, Container, IconButton, Toolbar, Tooltip, Typograph
 import { Link, Route, Routes, useNavigate } from 'react-router'
 import { useServers } from './live.tsx'
 import { AddServerDialog } from './components/AddServerDialog.tsx'
+import { DeploysPage } from './pages/DeploysPage.tsx'
 import { ServerPage } from './pages/ServerPage.tsx'
 import { ServersPage } from './pages/ServersPage.tsx'
 import { SettingsPage } from './pages/SettingsPage.tsx'
@@ -41,6 +42,9 @@ export function App() {
           <Button component={Link} to="/add" startIcon={<AddIcon />}>
             Add existing server
           </Button>
+          <Button component={Link} to="/deploys">
+            Deploys
+          </Button>
           <Tooltip title="Settings">
             <IconButton component={Link} to="/settings" aria-label="Settings">
               <SettingsIcon />
@@ -54,6 +58,7 @@ export function App() {
           <Route path="/servers/:id" element={<ServerPage />} />
           <Route path="/add" element={<AddRoute />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/deploys" element={<DeploysPage />} />
           <Route path="*" element={<NotFound title="Not found" />} />
         </Routes>
       </Container>

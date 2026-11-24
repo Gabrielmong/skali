@@ -8,6 +8,10 @@ export interface AppConfig {
   runAsCurrentUser: boolean;
   webDist: string;
   initialAllowlist: string[];
+  /** The deploy helper's API (SKALI_DEPLOYER_URL). */
+  deployerUrl: string;
+  /** File holding the helper's API token (SKALI_DEPLOYER_TOKEN_FILE). */
+  deployerTokenFile: string;
 }
 
 // apps/server/src -> repo root
@@ -15,9 +19,12 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const allowlist = env.SKALI_INITIAL_ALLOWLIST;
+  const dataDir = env.SKALI_DATA_DIR || "C:\\ProgramData\\Skali";
   return {
-    dataDir: env.SKALI_DATA_DIR || "C:\\ProgramData\\Skali",
-    port: env.SKALI_PORT ? Number(env.SKALI_PORT) : 4100,
+    dataDir,
+    deployerUrl: env.SKALI_DEPLOYER_URL || "http://127.0.0.1:4201",
+    deployerTokenFile: env.SKALI_DEPLOYER_TOKEN_FILE || path.win32.join("C:\\SkaliDeploy", "deployer", "api-token"),
+    port: env.SKALI_PORT ? Number(env.SKALI_PORT) : 4200,
     helperPath: path.join(repoRoot, "tools", "SkaliHelper", "publish", "SkaliHelper.exe"),
     runAsCurrentUser: env.SKALI_RUN_AS_CURRENT_USER === "1" || env.SKALI_RUN_AS_CURRENT_USER === "true",
     webDist: path.join(repoRoot, "apps", "web", "dist"),

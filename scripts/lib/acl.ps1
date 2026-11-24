@@ -328,7 +328,9 @@ function Assert-RepoRootAcl([string]$Repo) {
 
 # All reasons $Dir cannot be trusted (empty = trusted). Read-only. Root checks run first and the tree is walked only
 # when they pass, so nothing is enumerated through a link. $StopAt is the highest ancestor checked for links.
-function Get-DataDirProblems([string]$Dir, [string]$StopAt = (Split-Path $Dir -Parent)) {
+# -RootOnly skips the tree walk (the deploy root: it holds the `current` junction and whole releases; install-deployer.ps1
+# checks its fixed layout paths itself).
+function Get-DataDirProblems([string]$Dir, [string]$StopAt = (Split-Path $Dir -Parent), [switch]$RootOnly) {
     if (-not (Test-Path -LiteralPath $Dir)) { return @("$Dir does not exist") }
     $p = @()
     if (Test-IsReparsePoint $Dir) { $p += "$Dir is a junction/symlink" }
@@ -346,7 +348,7 @@ function Get-DataDirProblems([string]$Dir, [string]$StopAt = (Split-Path $Dir -P
     foreach ($sid in 'S-1-5-18', 'S-1-5-32-544') {
         if (-not ($rules | Where-Object { $_.Sid -eq $sid -and $_.Type -eq 'Allow' -and $_.Rights -match 'FullControl' })) { $p += "$sid lacks full control on the root" }
     }
-    if ($p) { return $p }
+    if ($p -or $RootOnly) { return $p }
 
     $tree = Get-TreeEntries $Dir
     foreach ($r in $tree.Reparse) { $p += "$r is a junction/symlink" }
@@ -380,23 +382,25 @@ $script:UntrustedDataDirMessage = "exists but wasn't created by the Skali instal
 # Must run before the service first starts. Creates the dir when missing, accepts an existing one only if it is
 # already trusted (an update leaves it alone), and otherwise throws. -DryRun reports which path would be taken
 # and never throws or changes anything. -OwnerSid/-GrantSids/-StopAt exist for tests; the defaults are the real policy.
+# install-deployer.ps1 reuses it for the deploy root with -RootOnly (see Get-DataDirProblems) and its own -UntrustedMessage;
+# the data dir's behaviour (the defaults) is unchanged.
 function Initialize-DataDirectory([string]$Dir, [switch]$DryRun,
         [Security.Principal.SecurityIdentifier]$OwnerSid = (New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-544'),
         [Security.Principal.SecurityIdentifier[]]$GrantSids = @((New-Object Security.Principal.SecurityIdentifier 'S-1-5-18'), (New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-544')),
-        [string]$StopAt = (Split-Path $Dir -Parent)) {
+        [string]$StopAt = (Split-Path $Dir -Parent), [switch]$RootOnly, [string]$UntrustedMessage = $script:UntrustedDataDirMessage) {
     if (-not (Test-Path -LiteralPath $Dir)) {
         if ($DryRun) { Write-Host "[dry-run] $Dir does not exist: would create it with its final protected ACL (owner Administrators, SYSTEM + Administrators full control, no inheritance), then assert it"; return }
         Write-Host "Creating $Dir with its final protected ACL"
         New-ProtectedDirectory $Dir $OwnerSid $GrantSids
-        $problems = @(Get-DataDirProblems $Dir $StopAt)
+        $problems = @(Get-DataDirProblems $Dir $StopAt -RootOnly:$RootOnly)
         if ($problems) { throw "Newly created $Dir is not as expected: $($problems -join '; ')" }
         return
     }
     $problems = @()
-    try { $problems = @(Get-DataDirProblems $Dir $StopAt) }
+    try { $problems = @(Get-DataDirProblems $Dir $StopAt -RootOnly:$RootOnly) }
     catch { $problems = @("cannot inspect it: $($_.Exception.Message)") }
     if ($problems) {
-        $msg = "$Dir $($script:UntrustedDataDirMessage -replace '<dir>', $Dir)`n  Problems: $(($problems | Select-Object -First 10) -join '; ')"
+        $msg = "$Dir $($UntrustedMessage -replace '<dir>', $Dir)`n  Problems: $(($problems | Select-Object -First 10) -join '; ')"
         if ($DryRun) { Write-Host "[dry-run] would fail: untrusted. $msg"; return }
         throw $msg
     }

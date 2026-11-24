@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # corepack must provide pnpm before setup-node's pnpm cache lookup runs;
+      # it is enabled again after setup-node so the shim belongs to the Node 22 it installed.
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable corepack (setup-node's Node)
+        run: corepack enable
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Publish the helper and FakeGame up front so the cold-runner dotnet publish
+      # does not eat the tests' beforeAll timeouts; ensurePublished then sees fresh exes.
+      - name: Build helper
+        run: pnpm build:helper
+
+      - name: Publish FakeGame
+        run: dotnet publish tools/FakeGame -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o tools/FakeGame/publish
+
+      # Server tests publish SkaliHelper / FakeGame on demand (needs the .NET SDK above).
+      # SKALI_ADMIN_TESTS is intentionally not set.
+      - name: Test
+        run: pnpm test

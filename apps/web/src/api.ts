@@ -2,6 +2,8 @@ import {
   SKALI_HEADER,
   SKALI_HEADER_VALUE,
   type AdoptRequest,
+  type DeployLogChunk,
+  type DeployStatusView,
   type FsListing,
   type GameInfo,
   type LaunchValues,
@@ -110,3 +112,16 @@ export const browseFs = (path?: string) =>
   request<FsListing>('GET', path === undefined ? '/api/fs' : `/api/fs?path=${enc(path)}`)
 export const getSettings = () => request<AppSettings>('GET', '/api/settings')
 export const putSettings = (patch: Partial<AppSettings>) => request<AppSettings>('PUT', '/api/settings', patch)
+
+// ---------- Deploys (proxied to the deploy helper; 503 "helper-not-running" when it isn't installed/started) ----------
+
+export const HELPER_NOT_RUNNING = 'helper-not-running'
+export const getDeployStatus = () => request<DeployStatusView>('GET', '/api/deploys/status')
+/** Without `from` the whole log; with it, what was appended since that byte offset (`next` is the new offset). */
+export const getDeployLog = (id: string, from?: number) =>
+  request<DeployLogChunk>('GET', `/api/deploys/events/${enc(id)}/log${from === undefined ? '' : `?from=${from}`}`)
+export const deployNow = () => request<unknown>('POST', '/api/deploys/deploy-now')
+export const restartSkali = () => request<unknown>('POST', '/api/deploys/restart')
+export const pauseDeploys = () => request<unknown>('POST', '/api/deploys/pause')
+export const resumeDeploys = () => request<unknown>('POST', '/api/deploys/resume')
+export const rollbackDeploy = (sha: string) => request<unknown>('POST', `/api/deploys/rollback/${enc(sha)}`)

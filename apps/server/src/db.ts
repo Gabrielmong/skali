@@ -23,6 +23,9 @@ const MIGRATIONS: string[] = [
    CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
 ];
 
+/** The newest schema this build understands (PRAGMA user_version after all migrations). */
+export const SCHEMA_VERSION = MIGRATIONS.length;
+
 export function openDb(path: string): Db {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");

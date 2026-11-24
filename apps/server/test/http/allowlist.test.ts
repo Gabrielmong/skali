@@ -46,15 +46,15 @@ describe("isAllowed", () => {
 describe("isAllowedHost (DNS rebinding guard)", () => {
   const h = "SERVER-PC";
   it("accepts IP literals, localhost and the machine name", () => {
-    for (const host of ["192.168.0.100:4100", "192.168.0.100", "127.0.0.1:4100", "[::1]:4100", "[::1]", "localhost:4100", "LOCALHOST",
-      "server-pc:4100", "SERVER-PC", "server-pc.", "SERVER-PC.:4100", "localhost.", "server-pc.local:4100", "Server-PC.home.arpa",
-      "server-pc.local.", "server-pc.home.arpa.:4100"])
+    for (const host of ["192.168.0.100:4200", "192.168.0.100", "127.0.0.1:4200", "[::1]:4200", "[::1]", "localhost:4200", "LOCALHOST",
+      "server-pc:4200", "SERVER-PC", "server-pc.", "SERVER-PC.:4200", "localhost.", "server-pc.local:4200", "Server-PC.home.arpa",
+      "server-pc.local.", "server-pc.home.arpa.:4200"])
       expect(isAllowedHost(host, h), host).toBe(true);
   });
   it("rejects other names, missing hosts and junk", () => {
-    for (const host of [undefined, "", "evil.com", "evil.com:4100", "192.168.0.100.evil.com", "localhost.evil.com", "server-pc-evil.com",
-      "xserver-pc", "1.2.3", "[nonsense]:4100", "server-pc:abc", "server-pc:4100:1", "server-pc..lan",
-      "server-pc.attacker.com", "server-pc.attacker.com:4100", "server-pc.lan", "server-pc.lan:4100", "server-pc.evil.home",
+    for (const host of [undefined, "", "evil.com", "evil.com:4200", "192.168.0.100.evil.com", "localhost.evil.com", "server-pc-evil.com",
+      "xserver-pc", "1.2.3", "[nonsense]:4200", "server-pc:abc", "server-pc:4200:1", "server-pc..lan",
+      "server-pc.attacker.com", "server-pc.attacker.com:4200", "server-pc.lan", "server-pc.lan:4200", "server-pc.evil.home",
       "x.server-pc.local", "server-pc.local.evil.com", "evil.home.arpa", "server-pc.x.home.arpa", "localhost.local", "server-pc.."])
       expect(isAllowedHost(host, h), String(host)).toBe(false);
   });
@@ -62,14 +62,14 @@ describe("isAllowedHost (DNS rebinding guard)", () => {
 
 describe("isAllowedOrigin", () => {
   it("allows a missing Origin and one whose host equals Host", () => {
-    expect(isAllowedOrigin(undefined, "192.168.0.100:4100")).toBe(true);
-    expect(isAllowedOrigin("http://192.168.0.100:4100", "192.168.0.100:4100")).toBe(true);
-    expect(isAllowedOrigin("http://Server-PC:4100", "server-pc:4100")).toBe(true);
+    expect(isAllowedOrigin(undefined, "192.168.0.100:4200")).toBe(true);
+    expect(isAllowedOrigin("http://192.168.0.100:4200", "192.168.0.100:4200")).toBe(true);
+    expect(isAllowedOrigin("http://Server-PC:4200", "server-pc:4200")).toBe(true);
   });
   it("rejects other origins", () => {
-    expect(isAllowedOrigin("http://evil.com", "192.168.0.100:4100")).toBe(false);
-    expect(isAllowedOrigin("http://192.168.0.100:4101", "192.168.0.100:4100")).toBe(false);
-    expect(isAllowedOrigin("null", "192.168.0.100:4100")).toBe(false);
-    expect(isAllowedOrigin("http://192.168.0.100:4100", undefined)).toBe(false);
+    expect(isAllowedOrigin("http://evil.com", "192.168.0.100:4200")).toBe(false);
+    expect(isAllowedOrigin("http://192.168.0.100:4201", "192.168.0.100:4200")).toBe(false);
+    expect(isAllowedOrigin("null", "192.168.0.100:4200")).toBe(false);
+    expect(isAllowedOrigin("http://192.168.0.100:4200", undefined)).toBe(false);
   });
 });

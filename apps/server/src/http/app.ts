@@ -25,6 +25,8 @@ import type { AppSettings, SettingsStore } from "../settings.js";
 import { ensureFirewallRules, removeFirewallRules } from "../system/firewall.js";
 import { Mutex } from "../util/mutex.js";
 import { isAllowed, isAllowedHost, isValidAllowEntry, normalizeRemote } from "./allowlist.js";
+import { busyRouter } from "./busy.js";
+import { deploysRouter } from "./deploys.js";
 import { browse } from "./fs-browse.js";
 import { toView } from "./views.js";
 
@@ -52,6 +54,9 @@ export interface AppDeps {
   hostname?: string;
   log?: (msg: string) => void;
   notify?: (e: AppEvent) => void;
+  /** The deploy helper behind the Deploys page proxy (routes are not mounted when unset). */
+  deployerUrl?: string;
+  deployerTokenFile?: string;
   /** How long start/stop/restart wait for an early rejection before answering 202. */
   opWindowMs?: number;
 }
@@ -153,6 +158,13 @@ export function createApp(deps: AppDeps): express.Express {
     next();
   });
 
+  // Loopback-only deploy-helper probe: before the Host/allowlist checks (the helper calls http://127.0.0.1:4200)
+  // and before anything else under /api/deploys.
+  app.use(
+    "/api/deploys/busy",
+    busyRouter({ repo, state: (id) => supervisor.state(id), remoteOf }),
+  );
+
   // 1. Host (DNS rebinding), 2. allowlist, 3. CSRF header. No CORS handling is registered anywhere.
   app.use((req, res, next) => {
     if (isAllowedHost(req.headers.host, machine)) return next();
@@ -176,6 +188,10 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   app.use("/api", express.json({ limit: JSON_LIMIT }));
+
+  if (deps.deployerUrl && deps.deployerTokenFile) {
+    app.use("/api/deploys", deploysRouter({ deployerUrl: deps.deployerUrl, deployerTokenFile: deps.deployerTokenFile, log }));
+  }
 
   // ---------- games & servers ----------
 

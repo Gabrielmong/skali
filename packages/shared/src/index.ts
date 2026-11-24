@@ -120,3 +120,42 @@ export function isValidAllowEntry(s: string): boolean {
 
 /** Inspect note the Minecraft adapter emits while eula.txt is missing or not accepted; the UI keys off it. */
 export const MINECRAFT_EULA_NOTE = "Accept the Minecraft EULA before the first start (server Overview)";
+
+// ---------- Deploys page (mirrors the deploy helper's GET /status JSON) ----------
+
+export type DeployEventKind = "DEPLOY" | "ROLLBACK" | "RESTART" | "PAUSE" | "RESUME";
+export type DeployEventStatus = "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+
+export interface DeployEventView {
+  id: string;
+  kind: DeployEventKind;
+  status: DeployEventStatus;
+  sha?: string;
+  message?: string;
+  by: string;
+  startedAt: string;
+  finishedAt?: string;
+  /** Bare reason text, e.g. "tests failed" or "rolled back automatically". */
+  detail?: string;
+  /** The GitHub Actions run of the CI workflow for this commit, when there is one. */
+  ciRunUrl?: string;
+  canRollback: boolean;
+  rollbackBlockedReason?: string;
+}
+
+export interface DeployStatusView {
+  running?: { sha: string; message: string; deployedAt: string };
+  autoDeploy: { on: boolean; reason?: string };
+  lastCheck?: { at: string; error?: string };
+  /** e.g. "Deploying abc1234" while an operation runs. */
+  busy?: string;
+  helperUpdateAvailable: boolean;
+  /** Newest first. */
+  events: DeployEventView[];
+}
+
+export interface DeployLogChunk {
+  log: string;
+  /** Byte offset to pass as `from` next time (absent on a full read). */
+  next?: number;
+}

@@ -135,15 +135,15 @@ describe("allowlist", () => {
 
 describe("Host header (DNS rebinding)", () => {
   it("rejects a foreign Host on /api and on the UI", async () => {
-    expect((await request(app()).get("/api/games").set("Host", "evil.example:4100")).status).toBe(403);
+    expect((await request(app()).get("/api/games").set("Host", "evil.example:4200")).status).toBe(403);
     expect((await request(app()).get("/").set("Host", "rebind.attacker.com")).status).toBe(403);
   });
   it("accepts IP literals, localhost and the machine name", async () => {
-    for (const h of ["192.168.0.100:4100", "localhost:4100", "server-pc:4100", "SERVER-PC.local:4100", "server-pc.home.arpa:4100", "[::1]:4100"])
+    for (const h of ["192.168.0.100:4200", "localhost:4200", "server-pc:4200", "SERVER-PC.local:4200", "server-pc.home.arpa:4200", "[::1]:4200"])
       expect((await request(app()).get("/api/games").set("Host", h)).status, h).toBe(200);
   });
   it("rejects <hostname>.<other suffix> (rebinding to an attacker's domain)", async () => {
-    for (const h of ["server-pc.attacker.com:4100", "server-pc.lan:4100", "server-pc.evil.home:4100"]) {
+    for (const h of ["server-pc.attacker.com:4200", "server-pc.lan:4200", "server-pc.evil.home:4200"]) {
       const r = await request(app()).get("/api/servers").set("Host", h);
       expect(r.status, h).toBe(403);
       expect(r.body).toEqual({ error: "forbidden" });
@@ -568,7 +568,7 @@ describe("settings", () => {
   it("PUT validates", async () => {
     for (const b of [{ allowlist: "192.168.0.150" }, { allowlist: ["nope"] }, { connectHost: 5 }, { other: 1 }, [],
       { connectHost: "" }, { connectHost: "has space" }, { connectHost: "a\u0000b" }, { connectHost: "tab\there" }, { connectHost: "x".repeat(254) },
-      { connectHost: "a".repeat(64) + ".lan" }, { connectHost: "-bad.lan" }, { connectHost: "host:4100" }, { connectHost: "http://x" },
+      { connectHost: "a".repeat(64) + ".lan" }, { connectHost: "-bad.lan" }, { connectHost: "host:4200" }, { connectHost: "http://x" },
       { connectHost: "<script>" }, { connectHost: "a..b" }])
       expect((await request(app()).put("/api/settings").set("X-Skali", "1").send(b)).status, JSON.stringify(b)).toBe(400);
   });
