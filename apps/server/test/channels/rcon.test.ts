@@ -47,4 +47,61 @@ describe("RCON", () => {
     fake = await startFakeRcon({ password: "pw" });
     expect(await withRcon("127.0.0.1", fake.port, "pw", (c) => c.exec("say hi"))).toBe("reply:say hi");
   });
+
+  it("connect rejects when the socket closes before auth without an error event", async () => {
+    fake = await startFakeRcon({ closeOnConnect: true });
+    const t0 = Date.now();
+    await expect(RconClient.connect("127.0.0.1", fake.port, "pw")).rejects.toThrow(/closed/);
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
+  it("each exec has its own timeout", async () => {
+    fake = await startFakeRcon({ password: "pw", answerCommands: 1 });
+    client = await RconClient.connect("127.0.0.1", fake.port, "pw", 300);
+    expect(await client.exec("first")).toBe("reply:first");
+    const t0 = Date.now();
+    await expect(client.exec("second")).rejects.toThrow(/timed out/);
+    expect(Date.now() - t0).toBeLessThan(1500);
+  });
+
+  it("joins a response split over several packets", async () => {
+    const body = "x".repeat(10_000);
+    fake = await startFakeRcon({ password: "pw", splitBody: 3, reply: () => body });
+    client = await RconClient.connect("127.0.0.1", fake.port, "pw");
+    expect(await client.exec("big")).toBe(body);
+  });
+
+  it("round-trips non-ASCII bodies as UTF-8", async () => {
+    fake = await startFakeRcon({ password: "pw", reply: (c) => c });
+    client = await RconClient.connect("127.0.0.1", fake.port, "pw");
+    expect(await client.exec("Skáli ✓")).toBe("Skáli ✓");
+  });
+
+  it("withRcon accepts a per-command timeout", async () => {
+    fake = await startFakeRcon({ password: "pw", answerCommands: 0 });
+    await expect(withRcon("127.0.0.1", fake.port, "pw", (c) => c.exec("x"), 200)).rejects.toThrow(/timed out/);
+  });
+
+  it("returns the reply when the server never echoes the probe", async () => {
+    fake = await startFakeRcon({ password: "pw", ignoreProbe: true });
+    client = await RconClient.connect("127.0.0.1", fake.port, "pw");
+    const t0 = Date.now();
+    expect(await client.exec("list")).toBe("reply:list");
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
+  it("does not leak a Minecraft-style unknown-request probe reply", async () => {
+    fake = await startFakeRcon({ password: "pw", unknownRequestBody: true });
+    client = await RconClient.connect("127.0.0.1", fake.port, "pw");
+    const out = await client.exec("list");
+    expect(out).toBe("reply:list");
+    expect(out).not.toContain("Unknown request");
+  });
+
+  it("keeps all parts of a split reply when the probe is never echoed", async () => {
+    const body = "y".repeat(10_000);
+    fake = await startFakeRcon({ password: "pw", splitBody: 3, ignoreProbe: true, reply: () => body });
+    client = await RconClient.connect("127.0.0.1", fake.port, "pw");
+    expect(await client.exec("big")).toBe(body);
+  });
 });

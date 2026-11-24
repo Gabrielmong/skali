@@ -62,6 +62,7 @@ function makeAdapter(over: Partial<GameAdapter> = {}): GameAdapter {
         { key: "pw", label: "Password", type: "password" },
       ],
     },
+    configSources: [],
     ready: { kind: "none" },
     defaultStopTimeoutSec: 30,
     inspectFolder: async () => ({ ok: false, reason: "n/a" }),

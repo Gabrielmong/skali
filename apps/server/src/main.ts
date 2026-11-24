@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
 import type { SupervisorEvent } from "./proc/supervisor.js";
 import { dataPaths, loadConfig, type AppConfig } from "./config.js";
+import { ConfigHistory } from "./config/history.js";
+import { ConfigSourcesRepo } from "./config/sources-repo.js";
 import { openDb } from "./db.js";
 import { getAdapter } from "./games/registry.js";
 import { createApp } from "./http/app.js";
@@ -104,6 +107,8 @@ async function main(cfg: AppConfig, log: (msg: string, alsoStderr?: boolean) => 
   let hub: WsHub | null = null;
   const app = createApp({
     repo,
+    configSources: new ConfigSourcesRepo(db),
+    configHistory: new ConfigHistory(path.join(cfg.dataDir, "config-history")),
     supervisor,
     adopter,
     settings,

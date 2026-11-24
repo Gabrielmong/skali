@@ -1,3 +1,5 @@
+import { ConfigParseError, type ConfigDoc } from "./types.js";
+
 /**
  * Lossless java.util.Properties reader/writer. Lines are kept verbatim; only
  * the entry touched by `set` is rewritten. Minecraft's server.properties is the target.
@@ -145,5 +147,22 @@ export function parseProperties(text: string): PropertiesDoc {
     toString() {
       return lines.map((l) => l.text + l.eol).join("");
     },
+  };
+}
+
+/** ConfigDoc adapter; field ids are the keys. */
+export function parsePropertiesConfig(text: string): ConfigDoc {
+  const doc = parseProperties(text);
+  return {
+    fields: () => doc.keys().map((k) => ({ id: k, key: k, value: doc.get(k)! })),
+    set(id, value) {
+      if (!doc.keys().includes(id)) throw new ConfigParseError("Unknown setting");
+      const prev = doc.get(id)!;
+      let out: string;
+      if (typeof value === "boolean") out = /^(True|False)$/.test(prev) ? (value ? "True" : "False") : String(value);
+      else out = String(value);
+      try { doc.set(id, out); } catch (e) { throw new ConfigParseError((e as Error).message); }
+    },
+    toString: () => doc.toString(),
   };
 }

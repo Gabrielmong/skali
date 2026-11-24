@@ -8,12 +8,16 @@ import { getGames } from '../api.ts'
 import { Console } from '../components/Console.tsx'
 import { OverviewTab } from '../components/OverviewTab.tsx'
 import { ActionButtons, formatUptime, useNow, useServerActions } from '../components/ServerActions.tsx'
-import { StatusChip } from '../components/StatusChip.tsx'
+import { SettingsTab } from '../components/settings/SettingsTab.tsx'
+import { RestartPendingChip, StatusChip } from '../components/StatusChip.tsx'
 import { useServerLogs, useServers } from '../live.tsx'
 import type { ServerView } from '@skali/shared'
 
+type TabId = 'console' | 'settings' | 'overview'
+
 function Detail({ server, game }: { server: ServerView; game: GameInfo | undefined }) {
-  const [tab, setTab] = useState<'console' | 'overview'>('console')
+  const [tab, setTab] = useState<TabId>('console')
+  const [dirty, setDirty] = useState(false)
   const actions = useServerActions(server)
   const logs = useServerLogs(server.id)
   const live = server.status === 'running' || server.status === 'starting'
@@ -31,6 +35,7 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
           {server.name}
         </Typography>
         <StatusChip status={server.status} />
+        {server.restartPending && <RestartPendingChip />}
         {live && server.startedAt && (
           <Typography variant="body2" color="text.secondary">
             {formatUptime(server.startedAt, now)}
@@ -67,8 +72,18 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
         </Alert>
       )}
 
-      <Tabs value={tab} onChange={(_, v: 'console' | 'overview') => setTab(v)}>
+      <Tabs
+        value={tab}
+        onChange={(_, v: TabId) => {
+          if (v === tab) return
+          // Leaving Settings drops its unsaved edits.
+          if (dirty && !window.confirm('Discard unsaved changes?')) return
+          setDirty(false)
+          setTab(v)
+        }}
+      >
         <Tab value="console" label="Console" />
+        <Tab value="settings" label="Settings" />
         <Tab value="overview" label="Overview" />
       </Tabs>
       {tab === 'console' ? (
@@ -79,8 +94,15 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
           hasCommands={server.hasCommands}
           {...(server.commandHelp ? { commandHelp: server.commandHelp } : {})}
         />
+      ) : tab === 'settings' ? (
+        <SettingsTab
+          server={server}
+          game={game}
+          onRestart={() => actions.ask('restart')}
+          onDirtyChange={setDirty}
+        />
       ) : (
-        <OverviewTab server={server} game={game} onRestart={() => actions.ask('restart')} />
+        <OverviewTab server={server} game={game} />
       )}
       {actions.ui}
     </Stack>

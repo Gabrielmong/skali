@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openDb as rawOpenDb } from "../../src/db.js";
+import { openDb as rawOpenDb, SCHEMA_VERSION } from "../../src/db.js";
 import { BadRequestError, NotFoundError } from "../../src/errors.js";
 import { ServerRepo } from "../../src/servers/repo.js";
 
@@ -86,12 +86,12 @@ describe("ServerRepo", () => {
     expect(() => repo.delete(c.id)).toThrow(NotFoundError);
   });
 
-  it("reopening keeps rows and user_version is 1", () => {
+  it("reopening keeps rows and user_version is the current schema version", () => {
     const db = openDb(dbPath);
     const c = new ServerRepo(db, key).create(input());
     db.close();
     const db2 = openDb(dbPath);
-    expect(db2.pragma("user_version", { simple: true })).toBe(1);
+    expect(db2.pragma("user_version", { simple: true })).toBe(SCHEMA_VERSION);
     expect(new ServerRepo(db2, key).get(c.id).name).toBe("Pal One");
     db2.close();
   });

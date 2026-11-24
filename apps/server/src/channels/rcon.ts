@@ -18,6 +18,7 @@ const TYPE_RESPONSE = 0;
 const TYPE_EXEC = 2;
 const TYPE_AUTH_RESPONSE = 2;
 const TYPE_AUTH = 3;
+const PROBE_GRACE_MS = 250;
 
 interface RconPacket {
   id: number;
@@ -26,8 +27,8 @@ interface RconPacket {
 }
 
 function encode(id: number, type: number, body: string): Buffer {
-  const b = Buffer.from(body, "ascii");
-  const buf = Buffer.alloc(14 + b.length);
+  const b = Buffer.from(body, "utf8");
+  const buf = Buffer.alloc(14 + b.length); // length field counts bytes, not characters
   buf.writeInt32LE(10 + b.length, 0);
   buf.writeInt32LE(id, 4);
   buf.writeInt32LE(type, 8);
@@ -111,10 +112,25 @@ export class RconClient {
 
   private async execOne(command: string): Promise<string> {
     const id = this.newId();
+    const probe = this.newId();
+    const deadline = Date.now() + this.timeoutMs;
     this.socket.write(encode(id, TYPE_EXEC, command));
+    // An empty RESPONSE_VALUE probe is echoed after the (possibly multi-packet) reply, marking its end.
+    this.socket.write(encode(probe, TYPE_RESPONSE, ""));
+    const parts: string[] = [];
     for (;;) {
-      const p = await this.nextPacket();
-      if (p.type === TYPE_RESPONSE && p.id === id) return p.body;
+      // Once part of the reply is in, only wait a short grace for the probe echo (some servers never send it).
+      const wait = parts.length > 0 ? Math.min(PROBE_GRACE_MS, Math.max(1, deadline - Date.now())) : Math.max(1, deadline - Date.now());
+      let p: RconPacket;
+      try {
+        p = await this.nextPacket(wait);
+      } catch (e) {
+        if (parts.length > 0) return parts.join(""); // timeout or close after a real reply: keep what arrived
+        throw e;
+      }
+      if (p.type !== TYPE_RESPONSE) continue;
+      if (p.id === probe) return parts.join("");
+      if (p.id === id) parts.push(p.body);
     }
   }
 
@@ -129,7 +145,7 @@ export class RconClient {
       this.queue.push({
         id: this.buffer.readInt32LE(4),
         type: this.buffer.readInt32LE(8),
-        body: this.buffer.subarray(12, 4 + size - 2).toString("ascii"),
+        body: this.buffer.subarray(12, 4 + size - 2).toString("utf8"),
       });
       this.buffer = this.buffer.subarray(4 + size);
     }
@@ -141,12 +157,12 @@ export class RconClient {
     this.waiter?.();
   }
 
-  private nextPacket(): Promise<RconPacket> {
+  private nextPacket(timeoutMs = this.timeoutMs): Promise<RconPacket> {
     return new Promise<RconPacket>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.waiter = undefined;
         reject(new RconTimeoutError());
-      }, this.timeoutMs);
+      }, timeoutMs);
       const check = (): boolean => {
         const p = this.queue.shift();
         if (p) {
@@ -173,8 +189,9 @@ export async function withRcon<T>(
   port: number,
   password: string,
   fn: (c: RconClient) => Promise<T>,
+  timeoutMs?: number,
 ): Promise<T> {
-  const client = await RconClient.connect(host, port, password);
+  const client = await RconClient.connect(host, port, password, timeoutMs);
   try {
     return await fn(client);
   } finally {

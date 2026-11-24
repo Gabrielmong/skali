@@ -2,6 +2,12 @@ import {
   SKALI_HEADER,
   SKALI_HEADER_VALUE,
   type AdoptRequest,
+  type ConfigFileView,
+  type ConfigFormat,
+  type ConfigHistoryEntry,
+  type ConfigSaveRequest,
+  type ConfigSaveResult,
+  type ConfigSourceView,
   type DeployLogChunk,
   type DeployStatusView,
   type FsListing,
@@ -125,3 +131,27 @@ export const restartSkali = () => request<unknown>('POST', '/api/deploys/restart
 export const pauseDeploys = () => request<unknown>('POST', '/api/deploys/pause')
 export const resumeDeploys = () => request<unknown>('POST', '/api/deploys/resume')
 export const rollbackDeploy = (sha: string) => request<unknown>('POST', `/api/deploys/rollback/${enc(sha)}`)
+
+// ---------- Settings editor (per-server config files) ----------
+
+const cfg = (id: string) => `${srv(id)}/config`
+const cfgFile = (id: string, sourceId: string) => `${cfg(id)}/files/${enc(sourceId)}`
+export const listConfigSources = (id: string) => request<ConfigSourceView[]>('GET', `${cfg(id)}/sources`)
+export const readConfig = (id: string, sourceId: string) => request<ConfigFileView>('GET', cfgFile(id, sourceId))
+export const previewConfig = (id: string, sourceId: string, edit: Omit<ConfigSaveRequest, 'etag'>) =>
+  request<ConfigFileView>('POST', `${cfgFile(id, sourceId)}/preview`, edit)
+/** 409 when the file changed on disk since `req.etag` was read. */
+export const saveConfig = (id: string, sourceId: string, req: ConfigSaveRequest) =>
+  request<ConfigSaveResult>('PUT', cfgFile(id, sourceId), req)
+export const configHistory = (id: string, sourceId: string) =>
+  request<ConfigHistoryEntry[]>('GET', `${cfgFile(id, sourceId)}/history`)
+export const configHistoryRaw = (id: string, sourceId: string, entryId: string) =>
+  request<{ raw: string }>('GET', `${cfgFile(id, sourceId)}/history/${enc(entryId)}`)
+export const restoreConfig = (id: string, sourceId: string, entryId: string, etag: string) =>
+  request<ConfigSaveResult>('POST', `${cfgFile(id, sourceId)}/history/${enc(entryId)}/restore`, { etag })
+export const addConfigSource = (id: string, src: { path: string; format?: ConfigFormat; label?: string }) =>
+  request<ConfigSourceView>('POST', `${cfg(id)}/sources`, src)
+export const updateConfigSource = (id: string, sourceId: string, patch: { format?: ConfigFormat; label?: string }) =>
+  request<ConfigSourceView>('PATCH', `${cfg(id)}/sources/${enc(sourceId)}`, patch)
+export const removeConfigSource = (id: string, sourceId: string) =>
+  request<void>('DELETE', `${cfg(id)}/sources/${enc(sourceId)}`)

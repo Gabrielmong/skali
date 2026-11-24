@@ -21,6 +21,17 @@ const MIGRATIONS: string[] = [
      created_at TEXT NOT NULL
    );
    CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+  // v2
+  `ALTER TABLE servers ADD COLUMN config_changed_at TEXT;
+   CREATE TABLE config_sources (
+     id TEXT PRIMARY KEY,
+     server_id TEXT NOT NULL,
+     path TEXT NOT NULL,
+     format TEXT NOT NULL,
+     label TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     UNIQUE (server_id, path COLLATE NOCASE)
+   );`,
 ];
 
 /** The newest schema this build understands (PRAGMA user_version after all migrations). */

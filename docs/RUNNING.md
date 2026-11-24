@@ -424,3 +424,27 @@ Install them manually first (SteamCMD for Palworld, a server jar for Minecraft).
 
 - [ ] Palworld: **pending** (not installed yet)
 - [ ] Minecraft: **pending** (not installed yet)
+
+### Settings editor (server PC)
+
+- [ ] Palworld: edit `ExpRate` in the form, save, then restart. The game shows the new rate, and the ini's other lines
+      are unchanged (compare with the History entry).
+- [ ] Minecraft: edit `motd` in Raw view and save.
+- [ ] A locked key can't be changed.
+- [ ] Edit the file in Notepad while the page is open: saving in Skáli gives "changed on disk".
+- [ ] Restore an older version from History.
+- [ ] Add `Engine.ini`, or any other file, through **Add file**.
+- [ ] Open the Raw view once in a real browser and check it: highlighting, dark mode, typing, and the History dialog's
+      read-only viewer. Automated tests use a stand-in for CodeMirror.
+- [ ] Saving a CRLF file from Raw view keeps CRLF. Check the History entry against the new file in Notepad++ or
+      `Format-Hex`.
+
+### Settings editor: known limits
+
+- Leaving the server page through the top navigation drops unsaved edits without asking. Switching file or tab, or
+  closing the browser tab, does ask.
+- Files that aren't UTF-8 or UTF-16 text open read-only, with a message. So do files over 1 MB and binary files.
+- In a file that mixes Windows (CRLF) and Unix (LF) line endings, a raw edit turns the CRLF lines into LF. Files that
+  are all one style are kept as they are.
+- A Palworld settings file that's broken and has no saved history only accepts raw text that leaves out the
+  Skáli-managed keys (REST API and AdminPassword). Skáli puts them back on the next start.

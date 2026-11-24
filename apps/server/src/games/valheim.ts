@@ -23,6 +23,7 @@ export const valheim: GameAdapter = {
       { key: "extraArgs", label: "Extra arguments", type: "text", default: "" },
     ],
   },
+  configSources: [],
   ready: { kind: "pattern", pattern: /Game server connected/ },
   defaultStopTimeoutSec: 90,
   async inspectFolder(folder) {

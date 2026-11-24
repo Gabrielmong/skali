@@ -1,4 +1,5 @@
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
+import DescriptionIcon from '@mui/icons-material/Description'
 import FolderIcon from '@mui/icons-material/Folder'
 import StorageIcon from '@mui/icons-material/Storage'
 import {
@@ -18,19 +19,23 @@ import { useEffect, useState } from 'react'
 import { browseFs } from '../api.ts'
 
 interface Props {
-  /** Called with the folder currently shown. */
-  onSelect: (folder: string) => void
+  /** Called with the folder currently shown (folder mode) or the full path of the clicked file (file mode). */
+  onSelect: (path: string) => void
   disabled?: boolean
+  /** `file` lists the files too and selects one by clicking it. Default `folder`. */
+  mode?: 'folder' | 'file'
+  /** Where to start browsing; the drive list when absent. */
+  initialPath?: string
 }
 
 const join = (base: string, name: string) => (base.endsWith('\\') ? base + name : `${base}\\${name}`)
 
 /** Browses folders on the server PC (drive list at the top). An unreadable folder shows an error and keeps the last listing. */
-export function FolderPicker({ onSelect, disabled }: Props) {
+export function FolderPicker({ onSelect, disabled, mode = 'folder', initialPath }: Props) {
   const [listing, setListing] = useState<FsListing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [target, setTarget] = useState<string | undefined>(undefined)
+  const [target, setTarget] = useState<string | undefined>(initialPath)
   /** Bumped on every navigation so retrying the same (just failed) folder fetches again. */
   const [nav, setNav] = useState(0)
   const go = (t: string | undefined) => {
@@ -88,9 +93,18 @@ export function FolderPicker({ onSelect, disabled }: Props) {
               <ListItemText primary={d} />
             </ListItemButton>
           ))}
-          {listing && listing.dirs.length === 0 && (
+          {mode === 'file' &&
+            listing?.files.map((f) => (
+              <ListItemButton key={f} disabled={disabled || loading} onClick={() => onSelect(childOf(f))}>
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <DescriptionIcon />
+                </ListItemIcon>
+                <ListItemText primary={f} />
+              </ListItemButton>
+            ))}
+          {listing && listing.dirs.length === 0 && (mode === 'folder' || listing.files.length === 0) && (
             <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              No subfolders
+              {mode === 'file' ? 'No files or subfolders' : 'No subfolders'}
             </Typography>
           )}
         </List>
@@ -100,15 +114,17 @@ export function FolderPicker({ onSelect, disabled }: Props) {
           This folder has more entries than can be listed.
         </Typography>
       )}
-      <Box>
-        <Button
-          variant="contained"
-          disabled={disabled || path === null || loading}
-          onClick={() => path !== null && onSelect(path)}
-        >
-          Use this folder
-        </Button>
-      </Box>
+      {mode === 'folder' && (
+        <Box>
+          <Button
+            variant="contained"
+            disabled={disabled || path === null || loading}
+            onClick={() => path !== null && onSelect(path)}
+          >
+            Use this folder
+          </Button>
+        </Box>
+      )}
     </Stack>
   )
 }

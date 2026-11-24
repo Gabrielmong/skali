@@ -8,19 +8,11 @@ Ideas that are agreed or parked but not built yet. The approved designs live in 
   - Still to do on the server PC: the first real `install-deployer.ps1` run and the "Auto-deploy" acceptance items in
     `RUNNING.md` (only dry runs and the helper's tests ran on the dev PC). Parked: an automated test of the setup
     scripts themselves (they need elevation, NSSM and a real service, so they are covered by `-DryRun` and acceptance only).
+- **Settings editor** (Plan 2): implemented in the working tree, awaiting your commit and the "Settings editor (server PC)" acceptance items in
+  `RUNNING.md`. Every config file per server, a form and a raw view, config history with restore, locked keys, and
+  "restart pending". Its limits are listed in `RUNNING.md` under "Settings editor: known limits".
 
 ## Planned next
-
-### Plan 2: Settings editor
-- Every config file per server, read through lossless INI, properties, JSON and YAML parsers (comments and order kept).
-- A form view with inferred types and template metadata, plus a raw view (CodeMirror).
-- Config history, so you can see and undo changes.
-- Locked keys that Skáli depends on (ports, RCON) are shown but guarded.
-- When a change needs a restart: **Restart now** or **Later**, and the card shows "restart pending".
-- Fixes parked into this plan:
-  - RCON connect never settles on close-without-error.
-  - Per-packet timeout, truncation of single packets over 4096 bytes, and ASCII-only bodies.
-  - Palworld options parser edge cases (trailing comma, BOM, `\t\f` in properties).
 
 ### Plan 3: Setup and maintenance
 - A gallery of games with search over Steam's app list.
@@ -57,6 +49,20 @@ Ideas that are agreed or parked but not built yet. The approved designs live in 
     environment.
   - Ctrl+C in setup still reaches the build steps it runs. The outcome is safe, but RUNNING.md's "it finishes" wording
     promises more than it delivers.
+
+### Settings editor
+- A form for Basic servers' argument string (`-flag`, `-key value`). Today it is one text field.
+- Add and remove entries in `ops.json` and `whitelist.json` from the form. Today the form edits existing entries, and you add players with the console's `op` and `whitelist add` commands or in raw view.
+- Per-key "requires restart". Today any saved config change on a running server marks a restart as pending.
+- Parked from the settings-editor reviews:
+  - A friendlier fallback: compare locked keys against the seed (`DefaultPalWorldSettings.ini`) when a broken file has no history.
+  - Keep each line's own line ending for mixed-EOL files in Raw view.
+  - Restore keeps the old version's encoding (today it uses the file's current encoding).
+  - Write config files via temp-file-plus-rename. Today a crash mid-write leaves a damaged file, though the old bytes are in History.
+  - A Reload button on a History-restore conflict, and Retry when the file list fails to load.
+  - Number edits go through JS numbers. A leading zero (`0123`) is dropped, a JSON big int over 2^53 loses digits on edit, and `1e21` is written as `1e+21`. Keep the typed text for numbers.
+  - A UTF-16 file can grow past the 1 MB read limit after a large save.
+  - The write check and the write itself are separate steps (check-then-write as SYSTEM). Re-check after `mkdir`, or write through an opened handle.
 
 ### Polish
 - UI:

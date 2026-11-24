@@ -5,8 +5,8 @@ export interface FakeRcon {
   close(): Promise<void>;
 }
 
-function packet(id: number, type: number, body: string): Buffer {
-  const b = Buffer.from(body, "ascii");
+function packet(id: number, type: number, body: string | Buffer): Buffer {
+  const b = typeof body === "string" ? Buffer.from(body, "utf8") : body;
   const buf = Buffer.alloc(14 + b.length);
   buf.writeInt32LE(10 + b.length, 0);
   buf.writeInt32LE(id, 4);
@@ -27,6 +27,16 @@ export async function startFakeRcon(opts: {
   splitReplies?: boolean;
   /** Overrides the default "reply:<command>" reply body. */
   reply?: (command: string) => string;
+  /** Splits each reply body into this many packets (all with the command's id). */
+  splitBody?: number;
+  /** Never answers the type-0 probe. */
+  ignoreProbe?: boolean;
+  /** Answers the type-0 probe like Minecraft: same id, body "Unknown request 0". */
+  unknownRequestBody?: boolean;
+  /** Closes each connection right after accept, without an error. */
+  closeOnConnect?: boolean;
+  /** Stops answering (commands and probes) after this many commands. */
+  answerCommands?: number;
 }): Promise<FakeRcon> {
   const sockets = new Set<net.Socket>();
   const server = net.createServer((sock) => {
@@ -34,6 +44,9 @@ export async function startFakeRcon(opts: {
     sock.on("close", () => sockets.delete(sock));
     sock.on("error", () => {});
     if (opts.silent) return;
+    if (opts.closeOnConnect) { sock.end(); return; }
+    let answered = 0;
+    let muted = false;
     let buf = Buffer.alloc(0);
     sock.on("data", (d) => {
       buf = Buffer.concat([buf, d]);
@@ -42,17 +55,32 @@ export async function startFakeRcon(opts: {
         if (buf.length < 4 + size) break;
         const id = buf.readInt32LE(4);
         const type = buf.readInt32LE(8);
-        const body = buf.subarray(12, 4 + size - 2).toString("ascii");
+        const body = buf.subarray(12, 4 + size - 2).toString("utf8");
         buf = buf.subarray(4 + size);
         if (type === 3) {
           if (opts.emptyFirst) sock.write(packet(id, 0, ""));
           sock.write(packet(body === opts.password ? id : -1, 2, ""));
         } else if (type === 2) {
-          const reply = packet(id, 0, opts.reply ? opts.reply(body) : `reply:${body}`);
+          if (opts.answerCommands !== undefined && answered >= opts.answerCommands) { muted = true; continue; }
+          answered++;
+          const text = opts.reply ? opts.reply(body) : `reply:${body}`;
+          if (opts.splitBody && opts.splitBody > 1) {
+            const bytes = Buffer.from(text, "utf8");
+            const step = Math.ceil(bytes.length / opts.splitBody);
+            for (let o = 0; o < bytes.length; o += step) sock.write(packet(id, 0, bytes.subarray(o, o + step)));
+            continue;
+          }
+          const reply = packet(id, 0, text);
           if (opts.splitReplies) {
             sock.write(reply.subarray(0, 6));
             setTimeout(() => sock.write(reply.subarray(6)), 10);
           } else sock.write(reply);
+        } else if (type === 0) {
+          // Empty RESPONSE_VALUE probe: echo it, like Source servers do.
+          if (muted || opts.ignoreProbe) continue;
+          if (opts.unknownRequestBody) { sock.write(packet(id, 0, "Unknown request 0")); continue; }
+          if (opts.splitReplies) setTimeout(() => sock.write(packet(id, 0, "")), 20); // after the delayed tail
+          else sock.write(packet(id, 0, ""));
         }
       }
     });

@@ -1,0 +1,14 @@
+[
+  {
+    "uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+    "name": "Notch",
+    "level": 4,
+    "bypassesPlayerLimit": false
+  },
+  {
+    "uuid": "61699b2e-d327-4a01-9f1e-0ea8c3f06bc6",
+    "name": "Dinnerbone",
+    "level": 2,
+    "bypassesPlayerLimit": true
+  }
+]

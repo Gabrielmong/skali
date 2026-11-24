@@ -19,12 +19,15 @@ export interface ServerRecord {
   pidStartTime: string | null;
   currentRunId: string | null;
   createdAt: string;
+  /** ISO time of the last launch/config change; compared with the run start for restartPending. */
+  configChangedAt: string | null;
 }
 
 interface Row {
   id: string; name: string; game: string; folder: string; launch: string; secrets: string; desired: string;
   auto_restart: number; auto_start: number; stop_timeout_sec: number;
   pid: number | null; pid_start_time: string | null; current_run_id: string | null; created_at: string;
+  config_changed_at: string | null;
 }
 
 export const NAME_RE = /^[A-Za-z0-9 _.-]{1,40}$/;
@@ -61,6 +64,7 @@ export class ServerRepo {
       pidStartTime: null,
       currentRunId: null,
       createdAt: new Date().toISOString(),
+      configChangedAt: null,
     };
     try {
       this.db
@@ -76,7 +80,7 @@ export class ServerRepo {
     return rec;
   }
 
-  update(id: string, patch: Partial<Omit<ServerRecord, "id" | "createdAt">>): ServerRecord {
+  update(id: string, patch: Partial<Omit<ServerRecord, "id" | "createdAt" | "configChangedAt">>): ServerRecord {
     const row = this.db.prepare("SELECT * FROM servers WHERE id = ?").get(id) as Row | undefined;
     if (!row) throw new NotFoundError("Server not found");
     const cur = this.toRecord(row);
@@ -96,6 +100,11 @@ export class ServerRepo {
       throw this.mapConstraint(e);
     }
     return next;
+  }
+
+  /** Records that the server's config changed at `at` (an ISO time). */
+  touchConfig(id: string, at: string): void {
+    if (this.db.prepare("UPDATE servers SET config_changed_at = ? WHERE id = ?").run(at, id).changes === 0) throw new NotFoundError("Server not found");
   }
 
   delete(id: string): void {
@@ -132,6 +141,7 @@ export class ServerRepo {
       pidStartTime: r.pid_start_time,
       currentRunId: r.current_run_id,
       createdAt: r.created_at,
+      configChangedAt: r.config_changed_at,
     };
   }
 }

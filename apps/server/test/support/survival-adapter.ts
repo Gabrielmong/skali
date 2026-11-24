@@ -5,6 +5,7 @@ import { fakeGamePath } from "./fake-game.js";
 /** Minimal adapter for integration tests: launches FakeGame (ticking), stops it gracefully with Ctrl+C. */
 export const fakeGameAdapter: GameAdapter = {
   info: { id: "basic", displayName: "FakeGame", hasCommands: false, launchFields: [] },
+  configSources: [],
   ready: { kind: "none" },
   defaultStopTimeoutSec: 20,
   inspectFolder: async () => ({ ok: false, reason: "n/a" }),

@@ -29,6 +29,14 @@ beforeEach(() => {
 })
 
 describe('ServerCard', () => {
+  it('shows a Restart pending chip only when restartPending', () => {
+    const { unmount } = renderCard({ status: 'running', restartPending: false })
+    expect(screen.queryByText('Restart pending')).toBeNull()
+    unmount()
+    renderCard({ status: 'running', restartPending: true })
+    expect(screen.getByText('Restart pending')).toBeInTheDocument()
+  })
+
   it('shows only Start when stopped', () => {
     renderCard({ status: 'stopped' })
     expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument()

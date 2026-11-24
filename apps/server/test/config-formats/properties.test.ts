@@ -100,4 +100,12 @@ describe("parseProperties", () => {
     d.set("a", "1");
     expect(d.toString()).toBe("a=1\n");
   });
+
+  it("\t and \f separate key and value", () => {
+    for (const src of ["key\tvalue\n", "key\fvalue\n"]) {
+      const doc = parseProperties(src);
+      expect(doc.get("key")).toBe("value");
+      expect(doc.toString()).toBe(src);
+    }
+  });
 });

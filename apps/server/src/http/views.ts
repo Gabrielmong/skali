@@ -14,6 +14,16 @@ export function maskLaunch(launch: LaunchValues, adapter: GameAdapter): LaunchVa
   return out;
 }
 
+/** The server is up and its config changed after it started. */
+export function isRestartPending(rec: ServerRecord, state: RuntimeState): boolean {
+  return (
+    (state.status === "running" || state.status === "starting") &&
+    !!rec.configChangedAt &&
+    !!state.startedAt &&
+    rec.configChangedAt > state.startedAt
+  );
+}
+
 /** The API's view of a server. Built field by field so `secrets` (or any future private field) never leaks. */
 export function toView(rec: ServerRecord, state: RuntimeState, adapter: GameAdapter, settings: AppSettings): ServerView {
   let ports: PortSpec[] = [];
@@ -29,6 +39,7 @@ export function toView(rec: ServerRecord, state: RuntimeState, adapter: GameAdap
   } catch {
     hasCommands = false;
   }
+  const restartPending = isRestartPending(rec, state);
   return {
     id: rec.id,
     name: rec.name,
@@ -45,6 +56,7 @@ export function toView(rec: ServerRecord, state: RuntimeState, adapter: GameAdap
     createdAt: rec.createdAt,
     status: state.status,
     crashPaused: state.crashPaused,
+    restartPending,
     ...(state.detail !== undefined ? { detail: state.detail } : {}),
     ...(state.startedAt !== undefined ? { startedAt: state.startedAt } : {}),
     ...(state.cpuPct !== undefined ? { cpuPct: state.cpuPct } : {}),

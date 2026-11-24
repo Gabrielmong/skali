@@ -1,0 +1,24 @@
+# Paper global configuration
+_version: 29
+
+verbose: false
+settings:
+  # Network settings
+  bungeecord: false
+  velocity-support:
+    enabled: false   # keep off unless proxied
+    online-mode: false
+    secret: ''
+  region-file-cache-size: 256
+  motd: "Welcome to \"Skali\""
+  save-empty-scoreboard-teams: true
+messages:
+  kick:
+    flying-player: 'Flying is not enabled on this server'
+    flying-vehicle: Flying is not enabled
+allowed-commands:
+  - say
+  - 'tell me'
+  - "msg"
+unsupported-settings:
+  allow-piston-duplication: false

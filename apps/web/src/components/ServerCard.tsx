@@ -19,7 +19,7 @@ import type { GameId, ServerView } from '@skali/shared'
 import type { ReactElement } from 'react'
 import { Link } from 'react-router'
 import { ActionButtons, formatUptime, gb, useNow, useServerActions } from './ServerActions.tsx'
-import { StatusChip } from './StatusChip.tsx'
+import { RestartPendingChip, StatusChip } from './StatusChip.tsx'
 
 const GAME_ICONS: Record<GameId, ReactElement> = {
   palworld: <PetsIcon />,
@@ -57,6 +57,7 @@ export function ServerCard({ server }: { server: ServerView }) {
               {server.name}
             </MuiLink>
             <StatusChip status={status} />
+            {server.restartPending && <RestartPendingChip />}
           </Stack>
 
           <Stack direction="row" spacing={2} sx={{ alignItems: "center", minHeight: 24 }}>

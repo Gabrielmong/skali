@@ -6,6 +6,7 @@ import { PalworldIniError, parsePalworldIni, quotePal, unquotePal } from "../con
 import type { ServerRecord } from "../servers/repo.js";
 import { splitArgs } from "../util/args.js";
 import { bool, generateSecret, num, readTextFile, str, writeIfChanged } from "../util/files.js";
+import { PALWORLD_TEMPLATE } from "./config-templates.js";
 import type { GameAdapter } from "./types.js";
 
 const REL_EXE = path.join("Pal", "Binaries", "Win64", "PalServer-Win64-Shipping-Cmd.exe");
@@ -42,6 +43,16 @@ export const palworld: GameAdapter = {
       { key: "extraArgs", label: "Extra arguments", type: "text", default: "" },
     ],
   },
+  configSources: [
+    {
+      id: "palworld-settings",
+      label: "PalWorldSettings.ini",
+      path: "Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini",
+      format: "palworld",
+      seedFrom: "DefaultPalWorldSettings.ini",
+      template: PALWORLD_TEMPLATE,
+    },
+  ],
   ready: {
     kind: "probe",
     probe: async (s) => {

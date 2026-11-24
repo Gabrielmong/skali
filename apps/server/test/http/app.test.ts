@@ -13,9 +13,11 @@ import { ServerRepo } from "../../src/servers/repo.js";
 import { Adopter } from "../../src/servers/adopt.js";
 import { getAdapter } from "../../src/games/registry.js";
 import { SettingsStore } from "../../src/settings.js";
+import { ConfigHistory } from "../../src/config/history.js";
+import { ConfigSourcesRepo } from "../../src/config/sources-repo.js";
 
 const key = Buffer.alloc(32, 3);
-let root: string, db: Db, repo: ServerRepo, settings: SettingsStore, logsDir: string, webDist: string;
+let root: string, db: Db, repo: ServerRepo, configSources: ConfigSourcesRepo, configHistory: ConfigHistory, settings: SettingsStore, logsDir: string, webDist: string;
 let remote: string | undefined;
 let states: Map<string, RuntimeState>;
 type Fn = (...args: never[]) => unknown;
@@ -29,7 +31,7 @@ let events: AppEvent[];
 
 function deps(over: Partial<AppDeps> = {}): AppDeps {
   return {
-    repo, supervisor, adopter, settings, logsDir, webDist,
+    repo, supervisor, adopter, settings, logsDir, webDist, configSources, configHistory,
     firewall: { ensure: fw.ensure, remove: fw.remove },
     remoteAddress: () => remote,
     hostname: "SERVER-PC",
@@ -69,6 +71,8 @@ beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "skali-app-"));
   db = openDb(path.join(root, "t.db"));
   repo = new ServerRepo(db, key);
+  configSources = new ConfigSourcesRepo(db);
+  configHistory = new ConfigHistory(path.join(root, "config-history"));
   settings = new SettingsStore(db, ["192.168.0.150"]);
   logsDir = path.join(root, "logs");
   webDist = path.join(root, "web");
@@ -293,6 +297,24 @@ describe("servers", () => {
       expect(fw.ensure).not.toHaveBeenCalled();
       expect(fw.remove).not.toHaveBeenCalled();
     });
+    it("a launch change sets configChangedAt; an identical launch or autoRestart alone does not", async () => {
+      const s = mkValheim();
+      const patch = (b: object) => request(app()).patch(`/api/servers/${s.id}`).set("X-Skali", "1").send(b).expect(200);
+      await patch({ autoRestart: false });
+      expect(repo.get(s.id).configChangedAt).toBeNull();
+      await patch({ launch: { port: 2456 } });
+      expect(repo.get(s.id).configChangedAt).toBeNull();
+      await patch({ launch: { port: 3000 } });
+      expect(repo.get(s.id).configChangedAt).toMatch(/^\d{4}-\d\d-\d\dT/);
+    });
+    it("PATCH launch on a running server shows restartPending", async () => {
+      const s = mkValheim();
+      states.set(s.id, { status: "running", crashPaused: false, startedAt: "2000-01-01T00:00:00.000Z" });
+      const r = await request(app()).patch(`/api/servers/${s.id}`).set("X-Skali", "1").send({ launch: { port: 3000 } });
+      expect(r.body.restartPending).toBe(true);
+      const r2 = await request(app()).patch(`/api/servers/${s.id}`).set("X-Skali", "1").send({ autoStart: false });
+      expect(r2.body.restartPending).toBe(true);
+    });
     it("rename re-syncs firewall rules (remove old, ensure new)", async () => {
       const s = mkValheim();
       const r = await request(app()).patch(`/api/servers/${s.id}`).set("X-Skali", "1").send({ name: "renamed" });
@@ -308,6 +330,16 @@ describe("servers", () => {
       await request(app()).patch(`/api/servers/${s.id}`).set("X-Skali", "1").send({ launch: { port: 3000 } }).expect(200);
       expect(fw.ensure).toHaveBeenCalledWith("friends", expect.arrayContaining([expect.objectContaining({ port: 3000 })]));
     });
+    it("a launch PATCH rejected by the ports check leaves configChangedAt unchanged", async () => {
+      const s = mkValheim();
+      const orig = getAdapter("valheim");
+      let calls = 0;
+      const adapter = () =>
+        ({ ...orig, ports: (r: ServerRecord) => { if (++calls > 1) throw new Error("bad ports"); return orig.ports(r); } }) as never;
+      const r = await request(app({ adapter })).patch(`/api/servers/${s.id}`).set("X-Skali", "1").send({ launch: { port: 3000 } });
+      expect(r.status).toBe(400);
+      expect(repo.get(s.id).configChangedAt).toBeNull();
+    });
     it("firewall failure reverts the change and returns 500 with the error", async () => {
       const s = mkValheim();
       fw.ensure.mockRejectedValueOnce(new Error("PowerShell failed (exit 1): access denied"));
@@ -317,6 +349,7 @@ describe("servers", () => {
       const back = repo.get(s.id);
       expect(back.name).toBe("friends");
       expect(back.launch.port).toBe(2456);
+      expect(back.configChangedAt).toBeNull();
       // old rules restored best-effort
       expect(fw.ensure).toHaveBeenLastCalledWith("friends", expect.arrayContaining([expect.objectContaining({ port: 2456 })]));
       expect(logs.join("\n")).toMatch(/access denied/);
@@ -338,6 +371,19 @@ describe("servers", () => {
     expect((adopter.remove.mock.calls[0]![1] as () => RuntimeState)()).toEqual({ status: "stopped", crashPaused: false });
     expect(supervisor.forget).toHaveBeenCalledWith(s.id);
     expect(events).toContainEqual({ type: "removed", serverId: s.id });
+  });
+  it("DELETE removes the server's config sources and history folder", async () => {
+    const s = mkValheim();
+    const other = mkValheim("other");
+    configSources.add(s.id, { path: "a.ini", format: "ini", label: "A" });
+    configSources.add(other.id, { path: "a.ini", format: "ini", label: "A" });
+    configHistory.push(s.id, "launch", Buffer.from("x"));
+    configHistory.push(other.id, "launch", Buffer.from("x"));
+    await request(app()).delete(`/api/servers/${s.id}`).set("X-Skali", "1").expect(204);
+    expect(configSources.list(s.id)).toEqual([]);
+    expect(configSources.list(other.id)).toHaveLength(1);
+    expect(fs.existsSync(path.join(root, "config-history", s.id))).toBe(false);
+    expect(configHistory.list(other.id, "launch")).toHaveLength(1);
   });
   it("DELETE of a stopped server that still tracks a pid → 409 (real Adopter)", async () => {
     const s = mkValheim();

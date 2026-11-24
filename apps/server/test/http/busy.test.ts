@@ -4,6 +4,8 @@ import path from "node:path";
 import type { RuntimeState } from "@skali/shared";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfigHistory } from "../../src/config/history.js";
+import { ConfigSourcesRepo } from "../../src/config/sources-repo.js";
 import { openDb, type Db } from "../../src/db.js";
 import { createApp, type SupervisorApi } from "../../src/http/app.js";
 import { ServerRepo } from "../../src/servers/repo.js";
@@ -24,7 +26,7 @@ function app() {
     state: vi.fn((id: string) => states.get(id) ?? { status: "stopped", crashPaused: false }),
   } as unknown as SupervisorApi;
   return createApp({
-    repo, supervisor, adopter: {} as never, settings, logsDir: path.join(root, "logs"), webDist: root,
+    repo, configSources: new ConfigSourcesRepo(db), configHistory: new ConfigHistory(path.join(root, "config-history")), supervisor, adopter: {} as never, settings, logsDir: path.join(root, "logs"), webDist: root,
     remoteAddress: () => remote, hostname: "SERVER-PC", log: () => undefined,
   });
 }

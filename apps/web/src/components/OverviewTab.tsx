@@ -9,7 +9,6 @@ import {
   DialogTitle,
   FormControlLabel,
   Paper,
-  Snackbar,
   Stack,
   Switch,
   Table,
@@ -20,59 +19,29 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { MINECRAFT_EULA_NOTE, type FieldSpec, type GameInfo, type LaunchValues, type ServerView } from '@skali/shared'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MINECRAFT_EULA_NOTE, type GameInfo, type ServerView } from '@skali/shared'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { acceptEula, deleteServer, inspectFolder, patchServer, type ServerPatch } from '../api.ts'
 import { ErrorSnackbar, errorMessage } from './ServerActions.tsx'
-import { LaunchFieldsForm, launchFormValid } from './LaunchFieldsForm.tsx'
 
 interface Props {
   server: ServerView
   game: GameInfo | undefined
-  /** Restart with the same player confirmation as the card. */
-  onRestart: () => void
 }
 
-/** Only the keys the game declares: the server rejects any other launch key. */
-function declaredOnly(launch: LaunchValues, fields: FieldSpec[]): LaunchValues {
-  const out: LaunchValues = {}
-  for (const f of fields) if (launch[f.key] !== undefined) out[f.key] = launch[f.key]!
-  return out
-}
-
-const sameLaunch = (a: LaunchValues, b: LaunchValues) => JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b))
-const sortKeys = (o: LaunchValues) => Object.fromEntries(Object.entries(o).sort(([x], [y]) => x.localeCompare(y)))
-
-export function OverviewTab({ server, game, onRestart }: Props) {
+export function OverviewTab({ server, game }: Props) {
   const navigate = useNavigate()
-  const fields = useMemo(() => game?.launchFields ?? [], [game])
-  const saved = useMemo(() => declaredOnly(server.launch, fields), [server.launch, fields])
-  const [values, setValues] = useState<LaunchValues>(saved)
   const [stopTimeout, setStopTimeout] = useState(String(server.stopTimeoutSec))
   const [timeoutError, setTimeoutError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [needsRestart, setNeedsRestart] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [eulaMissing, setEulaMissing] = useState(false)
 
-  // `baseline` is the last server copy the form was reconciled with; unsaved edits survive server updates.
-  const [baseline, setBaseline] = useState(saved)
-  const [seen, setSeen] = useState(saved)
-  if (seen !== saved) {
-    if (sameLaunch(values, baseline)) setValues(saved)
-    setBaseline(saved)
-    setSeen(saved)
-  }
   useEffect(() => setStopTimeout(String(server.stopTimeoutSec)), [server.stopTimeoutSec])
 
-  const dirty = !sameLaunch(values, baseline)
-  const valid = launchFormValid(fields, values)
-  const running = server.status === 'running' || server.status === 'starting' || server.status === 'stopping'
   const canDelete = server.status === 'stopped' || server.status === 'crashed'
 
   const patch = useCallback(
@@ -95,19 +64,6 @@ export function OverviewTab({ server, game, onRestart }: Props) {
     )
   }, [server.game, server.folder])
   useEffect(checkEula, [checkEula])
-
-  const save = async () => {
-    setSaving(true)
-    const view = await patch({ launch: values })
-    setSaving(false)
-    if (!view) return
-    // The view masks passwords again; drop any plaintext the user typed.
-    const next = declaredOnly(view.launch, fields)
-    setValues(next)
-    setBaseline(next)
-    if (running) setNeedsRestart(true)
-    else setToast('Saved')
-  }
 
   const commitTimeout = async () => {
     const n = Number(stopTimeout)
@@ -201,48 +157,6 @@ export function OverviewTab({ server, game, onRestart }: Props) {
 
       <Box>
         <Typography variant="subtitle1" gutterBottom>
-          Launch settings
-        </Typography>
-        <Stack spacing={2} sx={{ maxWidth: 480 }}>
-          {fields.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              This game has no launch settings.
-            </Typography>
-          ) : (
-            <LaunchFieldsForm fields={fields} values={values} onChange={setValues} disabled={saving} />
-          )}
-          {needsRestart && (
-            <Alert
-              severity="info"
-              action={
-                <Button
-                  color="inherit"
-                  size="small"
-                  onClick={() => {
-                    setNeedsRestart(false)
-                    onRestart()
-                  }}
-                >
-                  Restart
-                </Button>
-              }
-              onClose={() => setNeedsRestart(false)}
-            >
-              Takes effect on next start. Restart now?
-            </Alert>
-          )}
-          {fields.length > 0 && (
-            <Box>
-              <Button variant="contained" disabled={!dirty || !valid || saving} onClick={() => void save()}>
-                Save
-              </Button>
-            </Box>
-          )}
-        </Stack>
-      </Box>
-
-      <Box>
-        <Typography variant="subtitle1" gutterBottom>
           Behaviour
         </Typography>
         <Stack sx={{ maxWidth: 480 }}>
@@ -306,7 +220,6 @@ export function OverviewTab({ server, game, onRestart }: Props) {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={toast !== null} autoHideDuration={2500} onClose={() => setToast(null)} message={toast} />
       <ErrorSnackbar error={error} onClose={() => setError(null)} />
     </Stack>
   )

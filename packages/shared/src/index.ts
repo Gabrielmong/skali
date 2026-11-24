@@ -76,6 +76,8 @@ export type ServerView = ServerRecordPublic &
     connectAddress: string;
     hasCommands: boolean;
     commandHelp?: string;
+    /** The server is up and its config changed after it started. */
+    restartPending: boolean;
   };
 
 /** The masked value of a password launch field; sending it back in a PATCH keeps the stored value. */
@@ -158,4 +160,61 @@ export interface DeployLogChunk {
   log: string;
   /** Byte offset to pass as `from` next time (absent on a full read). */
   next?: number;
+}
+
+export type ConfigFormat = "ini" | "palworld" | "properties" | "json" | "yaml" | "raw";
+
+export interface ConfigSourceView {
+  id: string;
+  kind: "launch" | "file";
+  label: string;
+  path?: string;
+  format?: ConfigFormat;
+  builtin: boolean;
+}
+
+export interface ConfigFieldView {
+  id: string;
+  key: string;
+  section?: string;
+  value: string | number | boolean;
+  type: "switch" | "number" | "text" | "select" | "secret";
+  label?: string;
+  help?: string;
+  group?: string;
+  options?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  locked?: string;
+}
+
+export interface ConfigFileView {
+  sourceId: string;
+  format: ConfigFormat;
+  etag: string;
+  raw: string;
+  fields: ConfigFieldView[] | null;
+  parseError?: string;
+  missing?: boolean;
+  seededFrom?: string;
+}
+
+/** Exactly one of `changes` and `raw` is present. */
+export interface ConfigSaveRequest {
+  etag: string;
+  changes?: Record<string, string | number | boolean>;
+  raw?: string;
+}
+
+export interface ConfigSaveResult {
+  file: ConfigFileView;
+  restartPending: boolean;
+}
+
+export interface ConfigHistoryEntry {
+  id: string;
+  savedAt: string;
+  sizeBytes: number;
 }

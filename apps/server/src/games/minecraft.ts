@@ -7,6 +7,7 @@ import { parseProperties } from "../config-formats/properties.js";
 import type { ServerRecord } from "../servers/repo.js";
 import { splitArgs } from "../util/args.js";
 import { generateSecret, num, readTextFile, str, writeIfChanged } from "../util/files.js";
+import { MINECRAFT_TEMPLATE } from "./config-templates.js";
 import type { GameAdapter } from "./types.js";
 
 const EULA_OK = /^\s*eula\s*=\s*true\s*$/im;
@@ -33,6 +34,11 @@ export const minecraft: GameAdapter = {
       { key: "rconPort", label: "RCON port", type: "number", default: 25575, min: 1, max: 65535 },
     ],
   },
+  configSources: [
+    { id: "server-properties", label: "server.properties", path: "server.properties", format: "properties", template: MINECRAFT_TEMPLATE },
+    { id: "ops", label: "Operators (ops.json)", path: "ops.json", format: "json" },
+    { id: "whitelist", label: "Whitelist (whitelist.json)", path: "whitelist.json", format: "json" },
+  ],
   ready: { kind: "pattern", pattern: /Done \(\d/ },
   defaultStopTimeoutSec: 60,
   async inspectFolder(folder) {

@@ -13,7 +13,7 @@ export function rec(game: GameId, folder: string, launch: LaunchValues = {}, sec
   return {
     id: "id1", name, game, folder, launch, secrets,
     desired: "stopped", autoRestart: false, autoStart: false, stopTimeoutSec: 60,
-    pid: null, pidStartTime: null, currentRunId: null, createdAt: "2026-01-01T00:00:00Z",
+    pid: null, pidStartTime: null, currentRunId: null, createdAt: "2026-01-01T00:00:00Z", configChangedAt: null,
   };
 }
 

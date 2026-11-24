@@ -1,0 +1,11 @@
+{
+	"name": "caf\u00e9 \"quoted\" \ud83d\ude00",
+	"limits": {
+		"max": 20,
+		"ratio": 1.5e2,
+		"enabled": true
+	},
+	"tags": ["a", "b", 3],
+	"motd": null,
+	"a/b~c": "slash"
+}

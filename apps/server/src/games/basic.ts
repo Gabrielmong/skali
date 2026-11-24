@@ -42,6 +42,7 @@ export const basic: GameAdapter = {
       { key: "rconPassword", label: "RCON password", type: "password" },
     ],
   },
+  configSources: [],
   ready: { kind: "none" },
   defaultStopTimeoutSec: 60,
   async inspectFolder(folder) {

@@ -20,3 +20,8 @@ export function StatusChip({ status }: { status: ServerStatus }) {
     />
   )
 }
+
+/** Shown beside the status chip while a running server has config changes it has not picked up yet. */
+export function RestartPendingChip() {
+  return <Chip size="small" color="info" variant="outlined" label="Restart pending" />
+}

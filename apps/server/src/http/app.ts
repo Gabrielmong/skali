@@ -14,6 +14,10 @@ import {
   type PortSpec,
   type ServerView,
 } from "@skali/shared";
+import { isDeepStrictEqual } from "node:util";
+import type { ConfigHistory } from "../config/history.js";
+import { ConfigService } from "../config/service.js";
+import type { ConfigSourcesRepo } from "../config/sources-repo.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../errors.js";
 import { getAdapter, listGames } from "../games/registry.js";
 import type { GameAdapter } from "../games/types.js";
@@ -25,7 +29,9 @@ import type { AppSettings, SettingsStore } from "../settings.js";
 import { ensureFirewallRules, removeFirewallRules } from "../system/firewall.js";
 import { Mutex } from "../util/mutex.js";
 import { isAllowed, isAllowedHost, isValidAllowEntry, normalizeRemote } from "./allowlist.js";
+import { bodyObject, onlyKeys } from "./body.js";
 import { busyRouter } from "./busy.js";
+import { configRouter, CONFIG_JSON_LIMIT } from "./config-routes.js";
 import { deploysRouter } from "./deploys.js";
 import { browse } from "./fs-browse.js";
 import { toView } from "./views.js";
@@ -41,6 +47,8 @@ export type AppEvent =
 
 export interface AppDeps {
   repo: ServerRepo;
+  configSources: ConfigSourcesRepo;
+  configHistory: ConfigHistory;
   supervisor: SupervisorApi;
   adopter: AdopterApi;
   settings: SettingsStore;
@@ -80,14 +88,6 @@ const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(
 const isApi = (req: Request) => /^\/api(\/|$)/i.test(req.path);
 const defaultRemote = (req: IncomingMessage) => req.socket.remoteAddress;
 
-function bodyObject(req: Request): Record<string, unknown> {
-  const b: unknown = req.body;
-  if (!b || typeof b !== "object" || Array.isArray(b)) throw new BadRequestError("Expected a JSON object");
-  return b as Record<string, unknown>;
-}
-function onlyKeys(b: Record<string, unknown>, allowed: Set<string>): void {
-  for (const k of Object.keys(b)) if (!allowed.has(k)) throw new BadRequestError(`Unexpected field: ${k}`);
-}
 function optBool(b: Record<string, unknown>, k: string): boolean | undefined {
   const v = b[k];
   if (v !== undefined && typeof v !== "boolean") throw new BadRequestError(`${k} must be true or false`);
@@ -115,7 +115,7 @@ const portsKey = (ps: PortSpec[]) =>
   JSON.stringify(ps.filter((p) => p.forward).map((p) => `${p.port}/${p.protocol}`).sort());
 
 export function createApp(deps: AppDeps): express.Express {
-  const { repo, supervisor, adopter, settings, logsDir, webDist } = deps;
+  const { repo, configSources, configHistory, supervisor, adopter, settings, logsDir, webDist } = deps;
   const adapterOf = deps.adapter ?? getAdapter;
   const fw = deps.firewall ?? { ensure: ensureFirewallRules, remove: removeFirewallRules };
   const remoteOf = deps.remoteAddress ?? defaultRemote;
@@ -187,6 +187,8 @@ export function createApp(deps: AppDeps): express.Express {
     res.status(403).json({ error: "forbidden" });
   });
 
+  // Config files go up to 1 MiB (more once JSON-escaped), so these routes get their own, larger limit first.
+  app.use("/api/servers/:id/config", express.json({ limit: CONFIG_JSON_LIMIT }));
   app.use("/api", express.json({ limit: JSON_LIMIT }));
 
   if (deps.deployerUrl && deps.deployerTokenFile) {
@@ -277,6 +279,7 @@ export function createApp(deps: AppDeps): express.Express {
     } catch {
       // the stored values were unusable; any valid new set counts as a change
     }
+    const launchChanged = b.launch !== undefined && !isDeepStrictEqual(launch, cur.launch);
     const next = repo.update(id, {
       name,
       launch,
@@ -284,6 +287,14 @@ export function createApp(deps: AppDeps): express.Express {
       ...(autoStart !== undefined ? { autoStart } : {}),
       ...(st !== undefined ? { stopTimeoutSec: st as number } : {}),
     });
+    /** Only after the ports and firewall steps succeed, so a reverted change never shows as restart pending. */
+    const touched = (): ServerRecord => {
+      if (launchChanged) {
+        next.configChangedAt = new Date().toISOString();
+        repo.touchConfig(id, next.configChangedAt);
+      }
+      return next;
+    };
     const nameChanged = next.name !== cur.name;
     let newPorts: PortSpec[];
     try {
@@ -292,7 +303,7 @@ export function createApp(deps: AppDeps): express.Express {
       revert(cur);
       throw e instanceof BadRequestError ? e : new BadRequestError(errMsg(e));
     }
-    if (!nameChanged && portsKey(oldPorts) === portsKey(newPorts)) return next;
+    if (!nameChanged && portsKey(oldPorts) === portsKey(newPorts)) return touched();
     try {
       if (nameChanged) await fw.remove(cur.name);
       await fw.ensure(next.name, newPorts);
@@ -307,7 +318,7 @@ export function createApp(deps: AppDeps): express.Express {
       }
       throw new ExposedError(500, `Firewall update failed: ${errMsg(e)}`);
     }
-    return next;
+    return touched();
   }
 
   function revert(cur: ServerRecord): void {
@@ -339,9 +350,31 @@ export function createApp(deps: AppDeps): express.Express {
       removing.delete(id);
     }
     supervisor.forget(id);
+    try {
+      configSources.removeAll(id);
+    } catch (e) {
+      log(`Removing config sources for ${id} failed: ${errMsg(e)}`);
+    }
+    try {
+      configHistory.removeServer(id);
+    } catch (e) {
+      log(`Removing config history for ${id} failed: ${errMsg(e)}`);
+    }
     notify({ type: "removed", serverId: id });
     res.status(204).end();
   });
+
+  // ---------- config files ----------
+
+  const configService = new ConfigService({
+    repo,
+    sources: configSources,
+    history: configHistory,
+    adapterOf,
+    runtimeState: (id) => supervisor.state(id),
+    now: () => new Date().toISOString(),
+  });
+  app.use("/api/servers/:id/config", configRouter({ service: configService, notify }));
 
   // ---------- lifecycle ----------
 

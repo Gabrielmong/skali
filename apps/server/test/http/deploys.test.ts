@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfigHistory } from "../../src/config/history.js";
+import { ConfigSourcesRepo } from "../../src/config/sources-repo.js";
 import { openDb, type Db } from "../../src/db.js";
 import { createApp, type SupervisorApi } from "../../src/http/app.js";
 import { ServerRepo } from "../../src/servers/repo.js";
@@ -18,7 +20,7 @@ let reply: { status: number; body: unknown };
 
 function app(over: { deployerUrl?: string; deployerTokenFile?: string } = {}) {
   return createApp({
-    repo, supervisor: { state: vi.fn() } as unknown as SupervisorApi, adopter: {} as never, settings,
+    repo, configSources: new ConfigSourcesRepo(db), configHistory: new ConfigHistory(path.join(root, "config-history")), supervisor: { state: vi.fn() } as unknown as SupervisorApi, adopter: {} as never, settings,
     logsDir: path.join(root, "logs"), webDist: root, remoteAddress: () => "192.168.0.150", hostname: "SERVER-PC",
     log: () => undefined, deployerUrl: helperUrl, deployerTokenFile: tokenFile, ...over,
   });
