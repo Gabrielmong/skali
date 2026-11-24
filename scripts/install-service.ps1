@@ -91,15 +91,21 @@ Stop-ServiceIfRunning $serviceName -DryRun:$DryRun
 
 $nativeGuidance = "better-sqlite3 is native: use a Node version that has a prebuilt binary for it (Node 22 or 24 LTS, system-wide), or install the build tools (winget install Microsoft.VisualStudio.2022.BuildTools, with the 'Desktop development with C++' workload), then re-run."
 try {
-    # 2. Dependencies and build, THEN the lockdown (step 3). Order matters: pnpm used to hard-link node_modules files
-    # from its store, and NTFS has one ACL per file shared by all links. Locking down first left the store's links
-    # user-writable (a way to edit code LocalSystem runs); locking down over an existing linked node_modules rewrote
-    # the ACLs of the store and of other projects. The repo .npmrc (package-import-method=copy) makes install write
-    # private copies, a node_modules left by an older linked install is deleted first, and the lockdown runs last.
-    # The service is stopped during this window, so nothing executes the unprotected files.
-    Remove-HardLinkedNodeModules $repo -DryRun:$DryRun
+    # 2. Delete node_modules, lock the (now small) repo, THEN install and build. Why this order (and fast):
+    #  - every node_modules (root, apps\*, packages\*) is deleted first, so the recursive icacls passes and link walks only
+    #    see the source tree instead of ~60k node_modules entries;
+    #  - pnpm install and the build run AFTER the lock: every file they create inherits the locked root ACL (the repo
+    #    .npmrc has package-import-method=copy, so install writes private copies that carry no ACL of their source, and
+    #    never hard links into the user-writable pnpm store), so node_modules and the build outputs need no ACL pass;
+    #  - non-admins cannot write under the locked root, so no further link walk is needed after the install.
+    # The service is stopped during this window, so nothing executes the files meanwhile.
+    Remove-NodeModulesDirs $repo -DryRun:$DryRun
 
-    # Dependencies and build. The root build compiles shared, server and web, then publishes SkaliHelper
+    # 3. Only admins may change what LocalSystem executes: root first, then link check, recursive owner + reset, second
+    # link check (links that point outside the repo abort the run). See Protect-RepoDirectory.
+    Protect-RepoDirectory $repo -DryRun:$DryRun
+
+    # 4. Dependencies and build, inside the locked repo. The root build compiles shared, server and web, then publishes SkaliHelper
     # (`dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true`) into tools\SkaliHelper\publish.
     Push-Location $repo
     try {
@@ -130,12 +136,12 @@ try {
         } -DryRun:$DryRun
     } finally { Pop-Location }
 
-    # 3. Only admins may change what LocalSystem executes (after install/build, see step 2; links that point outside the repo abort the run, and children are reset to inherit from the locked root).
-    Protect-RepoDirectory $repo -DryRun:$DryRun
-    if ($DryRun) { Write-Host "[dry-run] Verifying node_modules has no hard-linked files (.npmrc package-import-method=copy)" }
-    else { Assert-NodeModulesNotHardLinked $repo }
+    # 4b. Sampled check only (no recursive pass): the root ACL, a sample of children including node_modules and the helper
+    # publish folder, and no hard-linked files in node_modules.
+    if ($DryRun) { Write-Host "[dry-run] Assert-RepoRootAcl (root + sampled children incl. node_modules\.pnpm, apps\server\node_modules\better-sqlite3, tools\SkaliHelper\publish); verifying node_modules has no hard-linked files" }
+    else { Assert-RepoRootAcl $repo; Assert-NodeModulesNotHardLinked $repo }
 
-    # 4. Data dir: created locked down (or verified trusted, never repaired) BEFORE the service first starts.
+    # 5. Data dir: created locked down (or verified trusted, never repaired) BEFORE the service first starts.
     Initialize-DataDirectory $dataDir -DryRun:$DryRun   # create fresh with its final ACL, or accept an already-trusted one, or throw
     if (-not $DryRun) { Assert-DataDirAcl $dataDir }
 } catch {
@@ -145,7 +151,7 @@ try {
     throw
 }
 
-# 5. Service
+# 6. Service
 $nodeArg = if ($node) { $node } else { '<node.exe>' }
 if (-not (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
     Invoke-Step "nssm install $serviceName $nodeArg $mainJsRelative" { nssm install $serviceName $node $mainJsRelative | Out-Null } -DryRun:$DryRun
@@ -167,7 +173,7 @@ Set-NssmValue $serviceName 'AppRotateBytes' '10485760' -DryRun:$DryRun
 # NODE_ENV=production makes the server serve the built web app. The allowlist only seeds a NEW database.
 Set-NssmValues $serviceName 'AppEnvironmentExtra' @('NODE_ENV=production', "SKALI_INITIAL_ALLOWLIST=$($AllowIp -join ',')") -DryRun:$DryRun
 
-# 6. Firewall for the web UI: Private profile, local subnet only, node.exe only.
+# 7. Firewall for the web UI: Private profile, local subnet only, node.exe only.
 try {
     $profiles = @(Get-NetConnectionProfile -ErrorAction Stop)
     foreach ($p in $profiles | Where-Object { $_.NetworkCategory -eq 'Public' }) {
@@ -181,7 +187,7 @@ Invoke-Step "Replacing firewall rule '$webRule' (inbound TCP $port, Profile Priv
         -Profile Private -RemoteAddress LocalSubnet -Program $node | Out-Null
 } -DryRun:$DryRun
 
-# 7. Start and verify
+# 8. Start and verify
 Start-ServiceAndWait $serviceName -DryRun:$DryRun
 if ($DryRun) {
     Write-Host "[dry-run] GET http://127.0.0.1:$port/api/games must return 200 (retried for up to 60 s)"

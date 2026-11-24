@@ -75,6 +75,8 @@ function Get-AclSids([string]$Path) {
 # per file, shared by every link, so (a) the lockdown below would rewrite the ACL of the store's files and of every
 # other project linked to them, and (b) a file the lockdown just protected can still be edited through the store's
 # (user-writable) link. The repo .npmrc sets package-import-method=copy so install makes private copies instead.
+# Copies made by pnpm carry no ACL of their source (verified: a file copied with fs.copyFileSync into a protected folder
+# has only inherited ACEs), so installing AFTER the lock needs no recursive ACL pass over node_modules.
 
 # The node_modules folders of the workspace (root plus each app/package).
 function Get-NodeModulesDirs([string]$Repo) {
@@ -83,7 +85,7 @@ function Get-NodeModulesDirs([string]$Repo) {
         $g = Join-Path $Repo $group
         if (Test-Path -LiteralPath $g) { $dirs += @(Get-ChildItem -LiteralPath $g -Directory | ForEach-Object { Join-Path $_.FullName 'node_modules' }) }
     }
-    @($dirs | Where-Object { Test-Path -LiteralPath $_ })
+    @($dirs | Where-Object { Get-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue })   # also finds a dangling junction
 }
 
 # True when files under node_modules\.pnpm have more than one hard link (samples up to $Sample files).
@@ -94,18 +96,27 @@ function Test-NodeModulesHardLinked([string]$Repo, [int]$Sample = 300) {
     [bool]($files | Where-Object { $_.LinkType -eq 'HardLink' } | Select-Object -First 1)
 }
 
-# Before `pnpm install`: a node_modules left by a hard-linking install is deleted so the install recreates it as copies.
-# Deleting only removes this repo's links; the pnpm store and other projects are untouched. cmd's rmdir /s removes
-# junctions without following them.
-function Remove-HardLinkedNodeModules([string]$Repo, [switch]$DryRun) {
+# Before the lockdown: ALWAYS delete every node_modules folder in the repo (root, apps\*, packages\*), so the lockdown
+# only has to cover the small source tree and `pnpm install` (run AFTER the lock) recreates node_modules inside the locked
+# root, where every file it writes inherits the locked ACL. cmd's `rmdir /s /q` removes junctions WITHOUT following them
+# (PowerShell 5.1 Remove-Item -Recurse can follow them into their targets, so it is never used here). Each path is
+# resolved first and must be inside the repo, and none of its parent folders (up to the repo) may be a link.
+function Remove-NodeModulesDirs([string]$Repo, [switch]$DryRun) {
+    $repoFull = [IO.Path]::GetFullPath($Repo).TrimEnd('\')
     $dirs = @(Get-NodeModulesDirs $Repo)
-    if (-not $dirs) { Write-Host 'node_modules: none present, nothing to clean.'; return }
-    if (-not (Test-NodeModulesHardLinked $Repo)) { Write-Host 'node_modules: no hard-linked files, keeping it.'; return }
+    if (-not $dirs) { Write-Host 'node_modules: none present, nothing to delete.'; return }
     foreach ($d in $dirs) {
-        if ($DryRun) { Write-Host "[dry-run] node_modules is hard-linked to the pnpm store: would delete $d (pnpm install then recreates it as copies)"; continue }
-        Write-Host "node_modules is hard-linked to the pnpm store: deleting $d (pnpm install recreates it as copies)"
-        & cmd.exe /c rmdir /s /q "`"$d`""
-        if (Test-Path -LiteralPath $d) { throw "Could not delete $d" }
+        $full = [IO.Path]::GetFullPath($d).TrimEnd('\')
+        if (-not (Test-PathInside $full $repoFull) -or $full -ieq $repoFull) { throw "Refusing to delete ${d}: it resolves outside the repo ($full)." }
+        $parent = Split-Path $full -Parent
+        while ($parent -and $parent -ine $repoFull) {
+            if (Test-IsReparsePoint $parent) { throw "Refusing to delete ${d}: its parent $parent is a junction/symlink." }
+            $parent = Split-Path $parent -Parent
+        }
+        if ($DryRun) { Write-Host "[dry-run] would delete $full (cmd rmdir /s /q, junctions are not followed); pnpm install recreates it after the lockdown"; continue }
+        Write-Host "Deleting $full (pnpm install recreates it after the lockdown)"
+        & cmd.exe /c rmdir /s /q "`"$full`""
+        if (Get-Item -LiteralPath $full -Force -ErrorAction SilentlyContinue) { throw "Could not delete $full" }
     }
 }
 
@@ -272,7 +283,8 @@ function Protect-RepoDirectory([string]$Repo, [switch]$DryRun) {
 
 # Throws unless the repo root grants SYSTEM and Administrators full control and nothing else (allowlist; Deny ACEs
 # rejected), is owned by a trusted principal, and the sampled children carry no explicit ACE outside the allowlist.
-# Sample: every top-level entry, plus the contents of apps/server/dist and tools/SkaliHelper/publish.
+# Sample: every top-level entry, plus the contents of apps/server/dist, tools/SkaliHelper/publish, node_modules/.pnpm,
+# apps/server/node_modules and the contents of its better-sqlite3 (those exist only after the install that follows the lock).
 function Assert-RepoRootAcl([string]$Repo) {
     $rules = @(Get-AclSids $Repo)
     $has = { param($s) [bool]($rules | Where-Object { $_.Sid -eq $s -and $_.Type -eq 'Allow' -and $_.Rights -match 'FullControl' }) }
@@ -285,9 +297,13 @@ function Assert-RepoRootAcl([string]$Repo) {
     if ($problems) { throw "Repo root ACL is wrong: $($problems -join '; ')" }
 
     $sample = @(Get-ChildItem -LiteralPath $Repo -Force | ForEach-Object { $_.FullName })
-    foreach ($sub in 'apps\server\dist', 'tools\SkaliHelper\publish') {
+    foreach ($sub in 'apps\server\dist', 'tools\SkaliHelper\publish', 'apps\server\node_modules\better-sqlite3') {   # folder and its contents
         $p = Join-Path $Repo $sub
         if (Test-Path -LiteralPath $p) { $sample += $p; $sample += @(Get-ChildItem -LiteralPath $p -Force | ForEach-Object { $_.FullName }) }
+    }
+    foreach ($sub in 'node_modules\.pnpm', 'apps\server\node_modules') {   # the folder only (thousands of entries below)
+        $p = Join-Path $Repo $sub
+        if (Test-Path -LiteralPath $p) { $sample += $p }
     }
     $bad = @()
     foreach ($s in $sample) {

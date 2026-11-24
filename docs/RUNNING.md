@@ -39,23 +39,26 @@ From an elevated PowerShell in the repo:
 .\scripts\install-service.ps1 -DryRun                  # prints every step, changes nothing, needs no elevation
 ```
 
-It checks the tools, deletes a hard-linked `node_modules` if one exists, runs `pnpm install --frozen-lockfile`,
-verifies better-sqlite3 loads under the system Node, runs `pnpm build` (shared, server, web, and a
-`dotnet publish -c Release` of SkaliHelper to `tools\SkaliHelper\publish\SkaliHelper.exe`, where the server looks for it), and only
-**then** locks the repo down to admins/SYSTEM (it also makes Administrators the owner of the repo, so
-the installing user cannot re-grant themselves access), creates
+It checks the tools, stops the service, **deletes every `node_modules`** (root, `apps\*`, `packages\*`), locks the repo down to
+admins/SYSTEM (it also makes Administrators the owner of the repo, so the installing user cannot re-grant themselves access),
+**then** runs `pnpm install --frozen-lockfile`, verifies better-sqlite3 loads under the system Node, runs `pnpm build` (shared,
+server, web, and a `dotnet publish -c Release` of SkaliHelper to `tools\SkaliHelper\publish\SkaliHelper.exe`, where the server
+looks for it), checks the root ACL plus a sample of children (including `node_modules`), creates
 `C:\ProgramData\Skali` with SYSTEM + Administrators only (inheritance off, owner Administrators) **before** the service first starts
 (or refuses an existing one it cannot trust, see below),
 installs/updates the service, adds the firewall rule `Skali web (TCP 4100)` (Private, local subnet, node.exe only),
 starts the service and checks `GET http://127.0.0.1:4100/api/games` returns 200 and the data dir ACL.
 
-**Why the lockdown runs after the install, and why `.npmrc` says `package-import-method=copy`:** pnpm's default
-hard-links `node_modules` files from its global store, and NTFS keeps one ACL per file, shared by every link. A
-lockdown run before the install would leave the store's links writable by the installing user (a way to change code
-LocalSystem runs). A lockdown over an existing linked `node_modules` would rewrite the ACLs of the store and of every
-other pnpm project on the PC. With `copy`, install writes private files that simply inherit the repo ACL, and the
-installer deletes an old hard-linked `node_modules` first (this removes only this repo's links) and fails if any
-remain. The repo ACL commands use icacls `/L`, which applies a change to a junction itself rather than to its target; it does **not**
+**Why `node_modules` is deleted, the lock runs before the install, and `.npmrc` says `package-import-method=copy`:** the repo has
+about 62k entries, almost all in `node_modules`, so two recursive icacls passes plus two link walks over it took very long. Now
+`node_modules` is removed first (`cmd rmdir /s /q`, which does not follow junctions; each path is checked to be inside the repo),
+the small source tree is locked, and `pnpm install` and the build run **inside the locked repo**: every file they create inherits
+the locked root ACL, and non-admins cannot write under the root, so no further recursive pass or link walk is needed (the
+installer only samples the ACLs of the root and some children, including `node_modules`). pnpm's default would hard-link
+`node_modules` files from its global store, and NTFS keeps one ACL per file shared by every link, which would leave the store's
+links writable by the installing user and let the lock rewrite other projects' ACLs. With `copy`, install writes private
+files that carry no ACL of their source (checked), and the installer fails if any hard-linked file remains. The cost: **every
+update reinstalls `node_modules` (about a minute)**, and `git pull` must still be run from an elevated shell. The repo ACL commands use icacls `/L`, which applies a change to a junction itself rather than to its target; it does **not**
 stop `/T` from traversing through junctions. So before any recursive icacls the installer enumerates every junction/symlink
 under the repo and aborts if one resolves outside it; today every `node_modules` junction points inside the repo. A link target
 counts as inside only if it is an absolute drive-letter path within the repo: `Volume{GUID}`, UNC and relative targets are
