@@ -80,7 +80,7 @@ export const minecraft: GameAdapter = {
     doc.set("rcon.port", String(num(s.launch.rconPort, 25575)));
     doc.set("rcon.password", password);
     doc.set("broadcast-rcon-to-ops", "false");
-    writeIfChanged(file, doc.toString());
+    writeIfChanged(file, doc.toString(), s.folder);
     return { secrets: { rconPassword: password } };
   },
   buildLaunch(s) {

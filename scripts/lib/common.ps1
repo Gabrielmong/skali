@@ -24,6 +24,13 @@ function Invoke-Step([string]$Description, [scriptblock]$Action, [switch]$DryRun
 function Get-NodePath {
     $node = Get-Command node -ErrorAction SilentlyContinue
     if (-not $node) { throw 'node was not found on PATH. Install Node 22 LTS first (winget install OpenJS.NodeJS.LTS).' }
+    # NSSM's Application and the firewall -Program must name the real image: a symlinked node.exe would match no rule.
+    $item = Get-Item -LiteralPath $node.Source
+    if ($item.Target) {
+        $target = @($item.Target)[0]
+        if (-not [System.IO.Path]::IsPathRooted($target)) { $target = Join-Path (Split-Path $node.Source -Parent) $target }
+        return (Resolve-Path -LiteralPath $target).Path
+    }
     $node.Source
 }
 

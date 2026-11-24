@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { BadRequestError } from "../errors.js";
 
 /** 24 random alphanumeric characters. */
 export function generateSecret(length = 24): string {
@@ -21,8 +22,36 @@ export function readTextFile(file: string): string | null {
   }
 }
 
-/** Writes only when the content differs from what is on disk; creates missing directories. */
-export function writeIfChanged(file: string, content: string): boolean {
+/**
+ * Defense in depth for writes the service (SYSTEM) makes inside a folder the games user can modify: refuses when
+ * `target`, or any directory between `root` (exclusive) and it, is a symlink or junction (lstat reports both).
+ * Missing components are fine. `root` itself is the owner's choice and is not checked.
+ */
+export function assertNoReparsePoints(root: string, target: string): void {
+  const rel = path.relative(path.resolve(root), path.resolve(target));
+  if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new BadRequestError(`Refusing to write outside the server folder: ${target}`);
+  }
+  let cur = path.resolve(root);
+  for (const part of rel.split(path.sep)) {
+    cur = path.join(cur, part);
+    let st: fs.Stats;
+    try {
+      st = fs.lstatSync(cur);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") return; // nothing below can exist
+      throw e;
+    }
+    if (st.isSymbolicLink()) throw new BadRequestError(`Refusing to write through a link (junction or symlink): ${cur}`);
+  }
+}
+
+/**
+ * Writes only when the content differs from what is on disk; creates missing directories.
+ * With `root`, first refuses link components (see assertNoReparsePoints).
+ */
+export function writeIfChanged(file: string, content: string, root?: string): boolean {
+  if (root !== undefined) assertNoReparsePoints(root, file);
   if (readTextFile(file) === content) return false;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, content, "utf8");

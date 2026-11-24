@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { BadRequestError } from "../errors.js";
 import { createPalworldRest, type PalworldRest } from "../channels/palworld-rest.js";
-import { PalworldIniError, parsePalworldIni, quotePal } from "../config-formats/palworld-options.js";
+import { PalworldIniError, parsePalworldIni, quotePal, unquotePal } from "../config-formats/palworld-options.js";
 import type { ServerRecord } from "../servers/repo.js";
 import { splitArgs } from "../util/args.js";
 import { bool, generateSecret, num, readTextFile, str, writeIfChanged } from "../util/files.js";
@@ -83,10 +83,12 @@ export const palworld: GameAdapter = {
       if (def === null) throw new BadRequestError("DefaultPalWorldSettings.ini not found in the server folder");
       text = def;
     }
-    const password = s.secrets.adminPassword || generateSecret();
     let doc;
+    let password = "";
     try {
       doc = parsePalworldIni(text);
+      // An AdminPassword already in the ini (adopted server, or set by the owner) wins; only generate when there is none.
+      password = unquotePal(doc.get("AdminPassword") ?? "") || s.secrets.adminPassword || generateSecret();
       doc.set("RESTAPIEnabled", "True");
       doc.set("RESTAPIPort", String(num(s.launch.restPort, 8212)));
       doc.set("AdminPassword", quotePal(password));
@@ -94,7 +96,7 @@ export const palworld: GameAdapter = {
       if (e instanceof PalworldIniError) throw new BadRequestError(`PalWorldSettings.ini is malformed: ${e.message}`);
       throw e;
     }
-    writeIfChanged(ini, doc.toString());
+    writeIfChanged(ini, doc.toString(), s.folder);
     return { secrets: { adminPassword: password } };
   },
   buildLaunch(s) {
@@ -107,7 +109,9 @@ export const palworld: GameAdapter = {
   async stop(s, ctx) {
     try {
       const r = rest(s);
-      await r.save();
+      // A save that fails or times out (big world) must not skip the graceful shutdown: the game may still be saving,
+      // and Ctrl+C mid-save is unproven. Shutdown saves again itself.
+      await r.save().catch(() => {});
       await r.shutdown(1, "Server is restarting/stopping");
     } catch {
       await ctx.ctrlC();

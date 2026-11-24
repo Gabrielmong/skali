@@ -2,7 +2,7 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { FormControlLabel, FormHelperText, IconButton, InputAdornment, Stack, Switch, TextField } from '@mui/material'
 import type { FieldSpec, LaunchValues } from '@skali/shared'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 const MASK = '****'
 
@@ -40,13 +40,16 @@ function PasswordField({
   disabled?: boolean
 }) {
   const [show, setShow] = useState(false)
+  // Once the baseline was the masked placeholder, emptying the box means "keep the current password", not "clear it".
+  const hadStored = useRef(false)
+  if (value === MASK) hadStored.current = true
   return (
     <TextField
       label={field.label}
       type={show ? 'text' : 'password'}
       value={value === MASK ? '' : value}
       placeholder={value === MASK ? 'Unchanged' : undefined}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value === '' && hadStored.current ? MASK : e.target.value)}
       helperText={field.help}
       disabled={disabled}
       autoComplete="new-password"

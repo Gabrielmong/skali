@@ -51,4 +51,11 @@ describe("Palworld REST", () => {
     expect(err).toBeInstanceOf(PalworldRestError);
     expect(err.status).toBe(401);
   });
+
+  it("save has its own, longer timeout than other calls", async () => {
+    fake = await startFakePalworld("pw", { delayMs: { "/v1/api/save": 300, "/v1/api/announce": 300 } });
+    const api = createPalworldRest({ port: fake.port, password: "pw", timeoutMs: 100, saveTimeoutMs: 2000 });
+    await expect(api.save()).resolves.toBeUndefined();
+    await expect(api.announce("x")).rejects.toThrow();
+  });
 });

@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { FieldSpec } from '@skali/shared'
+import type { FieldSpec, LaunchValues } from '@skali/shared'
 import { describe, expect, it, vi } from 'vitest'
 import { LaunchFieldsForm, launchFormValid } from './LaunchFieldsForm.tsx'
 
@@ -46,6 +47,21 @@ describe('LaunchFieldsForm', () => {
     expect(input).toHaveValue('')
     await userEvent.type(input, 'x')
     expect(onChange).toHaveBeenLastCalledWith({ password: 'x' })
+  })
+
+  it('typing into a stored (masked) password and then emptying it keeps the current one (sends ****)', async () => {
+    const seen: LaunchValues[] = []
+    function Host() {
+      const [v, setV] = useState<LaunchValues>({ password: '****' })
+      return <LaunchFieldsForm fields={fields} values={v} onChange={(n) => { seen.push(n); setV(n) }} />
+    }
+    render(<Host />)
+    const input = screen.getByLabelText('Password')
+    await userEvent.type(input, 'ab')
+    expect(seen.at(-1)).toEqual({ password: 'ab' })
+    await userEvent.clear(input)
+    expect(seen.at(-1)).toEqual({ password: '****' })
+    expect(input).toHaveAttribute('placeholder', 'Unchanged')
   })
 
   it('an explicit clear of a typed password sends an empty string', async () => {

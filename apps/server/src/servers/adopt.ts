@@ -6,6 +6,7 @@ import type { GameAdapter, InspectResult } from "../games/types.js";
 import { grantModify } from "../system/acl.js";
 import { ensureFirewallRules, removeFirewallRules } from "../system/firewall.js";
 import type { ServerRecord, ServerRepo } from "./repo.js";
+import { assertNoReparsePoints } from "../util/files.js";
 import { Mutex } from "../util/mutex.js";
 import { findValheimWorlds } from "./valheim-worlds.js";
 
@@ -169,6 +170,7 @@ export class Adopter {
     const pairs = [".fwl", ".db"].map((ext) => [path.join(srcDir, w.name + ext), path.join(destDir, w.name + ext)] as const);
     const exists = () => new BadRequestError(`World "${w.name}" already exists in the server folder`);
     if (pairs.some(([, d]) => fs.existsSync(d))) throw exists();
+    assertNoReparsePoints(folder, destDir);
     const savesDir = path.join(folder, "saves");
     const madeSaves = !fs.existsSync(savesDir);
     const madeWorlds = !fs.existsSync(destDir);
@@ -191,6 +193,7 @@ export class Adopter {
 /** Sets eula=true in the folder's eula.txt, keeping its other lines. `undo` receives a restore step. */
 export function writeEula(folder: string, undo: (() => void)[] = []): void {
   const file = path.join(folder, "eula.txt");
+  assertNoReparsePoints(folder, file);
   let prev: string | null = null;
   try { prev = fs.readFileSync(file, "utf8"); } catch { /* absent */ }
   let next: string;

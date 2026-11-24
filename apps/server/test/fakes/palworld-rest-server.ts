@@ -12,7 +12,10 @@ export interface FakePalworld {
   close(): Promise<void>;
 }
 
-export async function startFakePalworld(password: string): Promise<FakePalworld> {
+export async function startFakePalworld(
+  password: string,
+  opts: { failPaths?: string[]; delayMs?: Record<string, number> } = {},
+): Promise<FakePalworld> {
   const requests: RecordedRequest[] = [];
   const expected = "Basic " + Buffer.from(`admin:${password}`).toString("base64");
   const server = http.createServer((req, res) => {
@@ -28,6 +31,19 @@ export async function startFakePalworld(password: string): Promise<FakePalworld>
       if (req.headers.authorization !== expected) {
         res.writeHead(401, { "content-type": "text/plain" });
         res.end("Unauthorized");
+        return;
+      }
+      const delay = opts.delayMs?.[req.url ?? ""] ?? 0;
+      if (opts.failPaths?.includes(req.url ?? "")) {
+        res.writeHead(500);
+        res.end("boom");
+        return;
+      }
+      if (delay) {
+        setTimeout(() => {
+          res.writeHead(200);
+          res.end("");
+        }, delay);
         return;
       }
       const json = (o: unknown) => {

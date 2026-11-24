@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "pretest": "pnpm --filter @skali/shared build",
-    "test": "pnpm -r test",
-    "build": "pnpm --filter @skali/shared build && pnpm --filter @skali/server build && pnpm --filter @skali/web build && pnpm build:helper",
+    "pretest": "node scripts/run-pnpm.mjs --filter @skali/shared build",
+    "test": "node scripts/run-pnpm.mjs -r test",
+    "build": "node scripts/run-pnpm.mjs --filter @skali/shared build && node scripts/run-pnpm.mjs --filter @skali/server build && node scripts/run-pnpm.mjs --filter @skali/web build && node scripts/run-pnpm.mjs build:helper",
     "build:helper": "dotnet publish tools/SkaliHelper -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o tools/SkaliHelper/publish",
     "start": "cross-env NODE_ENV=production node apps/server/dist/main.js",
-    "dev": "concurrently -n server,web \"pnpm --filter @skali/server dev\" \"pnpm --filter @skali/web dev\""
+    "dev": "concurrently -n server,web \"node scripts/run-pnpm.mjs --filter @skali/server dev\" \"node scripts/run-pnpm.mjs --filter @skali/web dev\""
   },
   "devDependencies": {
     "concurrently": "^10.0.6",

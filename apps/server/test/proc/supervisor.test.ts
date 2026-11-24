@@ -323,6 +323,23 @@ describe("Supervisor: start", () => {
     expect(sv.state(s.id).status).toBe("crashed");
   });
 
+  it("a bare exe that is not on PATH fails the start with a clear message and never calls the helper", async () => {
+    adapter = makeAdapter({ buildLaunch: (s: ServerRecord) => ({ exe: "skali-no-such-java", args: [], cwd: s.folder }) });
+    const s = mkServer();
+    const sv = mkSup();
+    await sv.start(s.id);
+    expect(sv.state(s.id)).toMatchObject({ status: "crashed" });
+    expect(sv.state(s.id).detail).toContain("not found on the system PATH");
+    expect(h.helper.launch).not.toHaveBeenCalled();
+  });
+
+  it("a relative exe with a directory part is resolved against the server folder", async () => {
+    adapter = makeAdapter({ buildLaunch: (s: ServerRecord) => ({ exe: "bin\\x.exe", args: [], cwd: s.folder }) });
+    const s = mkServer();
+    await mkSup().start(s.id);
+    expect(h.helper.launch.mock.calls[0]![0].exe).toBe(path.win32.resolve(dir, "bin\\x.exe"));
+  });
+
   it("prepare rejection -> crashed with detail, no launch, no auto-restart", async () => {
     adapter = makeAdapter({ prepare: vi.fn(async () => { throw new Error("Config file locked"); }) });
     const s = mkServer();

@@ -19,6 +19,11 @@ describe("valheim adapter", () => {
       "-password", "secret1", "-public", "1", "-savedir", path.join("C:\\v", "saves"), "-logFile", "-",
     ]);
   });
+  it("falls back to the record name when launch.name is empty", () => {
+    const s = rec("valheim", "C:\v", { name: "", password: "secret1" }, {}, "Rec Name");
+    const a = valheim.buildLaunch(s).args;
+    expect(a[a.indexOf("-name") + 1]).toBe("Rec Name");
+  });
   it("adds crossplay and extra args, public 0", () => {
     const s = rec("valheim", "C:\\v", { name: "n", port: 3000, world: "W", password: "secret1", public: false, crossplay: true, extraArgs: '-x "a b"' });
     const a = valheim.buildLaunch(s).args;

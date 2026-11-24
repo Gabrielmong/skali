@@ -86,10 +86,15 @@ Stop-ServiceIfRunning $serviceName -DryRun:$DryRun
 
 $nativeGuidance = "better-sqlite3 is native: use a Node version that has a prebuilt binary for it (Node 22 or 24 LTS, system-wide), or install the build tools (winget install Microsoft.VisualStudio.2022.BuildTools, with the 'Desktop development with C++' workload), then re-run."
 try {
-    # 2. Only admins may change what LocalSystem executes.
-    Protect-RepoDirectory $repo -DryRun:$DryRun
+    # 2. Dependencies and build, THEN the lockdown (step 3). Order matters: pnpm used to hard-link node_modules files
+    # from its store, and NTFS has one ACL per file shared by all links. Locking down first left the store's links
+    # user-writable (a way to edit code LocalSystem runs); locking down over an existing linked node_modules rewrote
+    # the ACLs of the store and of other projects. The repo .npmrc (package-import-method=copy) makes install write
+    # private copies, a node_modules left by an older linked install is deleted first, and the lockdown runs last.
+    # The service is stopped during this window, so nothing executes the unprotected files.
+    Remove-HardLinkedNodeModules $repo -DryRun:$DryRun
 
-    # 3. Dependencies and build. The root build compiles shared, server and web, then publishes SkaliHelper
+    # Dependencies and build. The root build compiles shared, server and web, then publishes SkaliHelper
     # (`dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true`) into tools\SkaliHelper\publish.
     Push-Location $repo
     try {
@@ -120,9 +125,13 @@ try {
         } -DryRun:$DryRun
     } finally { Pop-Location }
 
-    # 4. Data dir: locked down BEFORE the service first starts, so secret.key and skali.db inherit it.
-    Invoke-Step "Creating $dataDir" { New-Item -ItemType Directory -Force $dataDir | Out-Null } -DryRun:$DryRun
-    Protect-DataDirectory $dataDir -DryRun:$DryRun
+    # 3. Only admins may change what LocalSystem executes (after install/build, see step 2; links that point outside the repo abort the run, and children are reset to inherit from the locked root).
+    Protect-RepoDirectory $repo -DryRun:$DryRun
+    if ($DryRun) { Write-Host "[dry-run] Verifying node_modules has no hard-linked files (.npmrc package-import-method=copy)" }
+    else { Assert-NodeModulesNotHardLinked $repo }
+
+    # 4. Data dir: created locked down (or verified trusted, never repaired) BEFORE the service first starts.
+    Initialize-DataDirectory $dataDir -DryRun:$DryRun   # create fresh with its final ACL, or accept an already-trusted one, or throw
     if (-not $DryRun) { Assert-DataDirAcl $dataDir }
 } catch {
     Write-Warning "Install failed: $($_.Exception.Message)"
@@ -171,7 +180,7 @@ Invoke-Step "Replacing firewall rule '$webRule' (inbound TCP $port, Profile Priv
 Start-ServiceAndWait $serviceName -DryRun:$DryRun
 if ($DryRun) {
     Write-Host "[dry-run] GET http://127.0.0.1:$port/api/games must return 200 (retried for up to 60 s)"
-    Write-Host "[dry-run] Verifying data dir ACL (secret.key and skali.db inherit it; no Users/Everyone/Authenticated Users ACE)"
+    Write-Host "[dry-run] Verifying data dir ACL (secret.key and skali.db inherit it; no ACE for any principal other than SYSTEM and Administrators)"
 } else {
     $ok = $false
     $deadline = (Get-Date).AddSeconds(60)

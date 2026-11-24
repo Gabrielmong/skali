@@ -47,6 +47,24 @@ describe("palworld adapter", () => {
       expect(r2.secrets!.adminPassword).toBe(pw);
       expect(fs.readFileSync(iniPath(f)).equals(first)).toBe(true);
     });
+    it("reuses an AdminPassword already in the ini instead of generating one", async () => {
+      const f = tmpFolder();
+      touch(path.join(f, "DefaultPalWorldSettings.ini"), DEFAULT_INI);
+      touch(iniPath(f), DEFAULT_INI.replace('AdminPassword=""', 'AdminPassword="owner pw"'));
+      const r = await palworld.prepare(rec("palworld", f, {}));
+      expect(r.secrets!.adminPassword).toBe("owner pw");
+      expect(parsePalworldIni(fs.readFileSync(iniPath(f), "utf8")).get("AdminPassword")).toBe('"owner pw"');
+      // an ini value also wins over a stale stored secret
+      const r2 = await palworld.prepare(rec("palworld", f, {}, { adminPassword: "stale" }));
+      expect(r2.secrets!.adminPassword).toBe("owner pw");
+    });
+    it("generates only when the ini has none, and keeps the stored secret then", async () => {
+      const f = tmpFolder();
+      touch(path.join(f, "DefaultPalWorldSettings.ini"), DEFAULT_INI);
+      const r = await palworld.prepare(rec("palworld", f, {}, { adminPassword: "stored" }));
+      expect(r.secrets!.adminPassword).toBe("stored");
+      expect(parsePalworldIni(fs.readFileSync(iniPath(f), "utf8")).get("AdminPassword")).toBe('"stored"');
+    });
     it("copies the default when the existing ini is empty", async () => {
       const f = tmpFolder();
       touch(path.join(f, "DefaultPalWorldSettings.ini"), DEFAULT_INI);
@@ -94,6 +112,14 @@ describe("palworld adapter", () => {
     it("stop saves then shuts down", async () => {
       fake = await startFakePalworld("pw");
       const s = rec("palworld", "C:\\p", { restPort: fake.port }, { adminPassword: "pw" });
+      const ctrlC = vi.fn(async () => {});
+      await palworld.stop(s, { ctrlC });
+      expect(fake.requests.filter((r) => r.method === "POST").map((r) => r.url)).toEqual(["/v1/api/save", "/v1/api/shutdown"]);
+      expect(ctrlC).not.toHaveBeenCalled();
+    });
+    it("stop still calls shutdown (and not Ctrl+C) when save fails", async () => {
+      fake = await startFakePalworld("pw", { failPaths: ["/v1/api/save"] });
+      const s = rec("palworld", "C:\p", { restPort: fake.port }, { adminPassword: "pw" });
       const ctrlC = vi.fn(async () => {});
       await palworld.stop(s, { ctrlC });
       expect(fake.requests.filter((r) => r.method === "POST").map((r) => r.url)).toEqual(["/v1/api/save", "/v1/api/shutdown"]);

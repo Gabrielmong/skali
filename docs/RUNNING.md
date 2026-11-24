@@ -34,13 +34,27 @@ From an elevated PowerShell in the repo:
 .\scripts\install-service.ps1 -DryRun                  # prints every step, changes nothing, needs no elevation
 ```
 
-It checks the tools, locks the repo down to admins/SYSTEM, runs `pnpm install --frozen-lockfile`, verifies
-better-sqlite3 loads under the system Node (it also makes Administrators the owner of the repo and data dir, so
-the installing user cannot re-grant themselves access), runs `pnpm build` (shared, server, web, and a `dotnet publish -c Release`
-of SkaliHelper to `tools\SkaliHelper\publish\SkaliHelper.exe`, where the server looks for it), creates
+It checks the tools, deletes a hard-linked `node_modules` if one exists, runs `pnpm install --frozen-lockfile`,
+verifies better-sqlite3 loads under the system Node, runs `pnpm build` (shared, server, web, and a
+`dotnet publish -c Release` of SkaliHelper to `tools\SkaliHelper\publish\SkaliHelper.exe`, where the server looks for it), and only
+**then** locks the repo down to admins/SYSTEM (it also makes Administrators the owner of the repo and data dir, so
+the installing user cannot re-grant themselves access), creates
 `C:\ProgramData\Skali` with SYSTEM + Administrators only (inheritance off) **before** the service first starts,
 installs/updates the service, adds the firewall rule `Skali web (TCP 4100)` (Private, local subnet, node.exe only),
 starts the service and checks `GET http://127.0.0.1:4100/api/games` returns 200 and the data dir ACL.
+
+**Why the lockdown runs after the install, and why `.npmrc` says `package-import-method=copy`:** pnpm's default
+hard-links `node_modules` files from its global store, and NTFS keeps one ACL per file, shared by every link. A
+lockdown run before the install would leave the store's links writable by the installing user (a way to change code
+LocalSystem runs). A lockdown over an existing linked `node_modules` would rewrite the ACLs of the store and of every
+other pnpm project on the PC. With `copy`, install writes private files that simply inherit the repo ACL, and the
+installer deletes an old hard-linked `node_modules` first (this removes only this repo's links) and fails if any
+remain. The repo ACL commands use icacls `/L`, which applies a change to a junction itself rather than to its target; it does **not**
+stop `/T` from traversing through junctions. Today every `node_modules` junction points inside the repo, so nothing outside it
+is touched. Both lockdowns first remove every explicit ACE on the root that is not SYSTEM or Administrators (`icacls /grant:r`
+replaces only the principals it names, so an ACE a user added to a pre-created folder would otherwise survive), and the
+data dir children are reset to inherit only. The installer asserts the root ACL against an allowlist: any other principal fails it.
+Check after an install: `fsutil hardlink list C:\skali\node_modules\.pnpm\express@5.3.0\node_modules\express\index.js` prints a single line.
 
 `-AllowIp` only seeds the allowlist of a **new** database. Afterwards edit it on the Settings page.
 `127.0.0.1` is always allowed.
@@ -109,6 +123,10 @@ Accepted Host headers: any IP literal (`192.168.0.100`), `localhost`, the server
 - **Ctrl+C does not save the world on stop**: games get a console (`lpDesktop=""`) and Skáli sends Ctrl+C across users
   through the helper. If a game exits without saving, see the acceptance items below; the stop timeout is per server
   and Skáli force-kills after it.
+- **Minecraft: "Java not found"**: the default Java path `java` is looked up on the machine PATH (the service runs as
+  LocalSystem, so a Java that is only on your user PATH is invisible to it) with PATHEXT. Install a JDK system-wide, or
+  set **Java path** to the full path of `java.exe`. The folder must be readable by the `SkaliGames` user: a JDK under
+  `C:\Users\<you>\.jdks` is not.
 - **Minecraft will not start / EULA**: open the server's Overview and accept the EULA first. Skáli writes `eula.txt`
   only after you do.
 - **UI unreachable from another PC**: network profile is Public (set it to Private), or your IP is not in the
@@ -131,8 +149,7 @@ Run after the first install on `192.168.0.100`. Tick each item and note any diff
 - [ ] `http://<server-hostname>:4100` loads from your PC. Names outside the accepted Host forms (see Locked out?) get 403 (by design).
 - [ ] Another LAN device (not on the allowlist) gets the 403 text.
 - [ ] On the server PC `http://127.0.0.1:4100` always works (also with an emptied allowlist).
-- [ ] Data dir ACL: `icacls C:\ProgramData\Skali` lists only SYSTEM and Administrators, no `(I)` inherited entries, and no
-      Users / Everyone / Authenticated Users. Owner is Administrators or SYSTEM
+- [ ] Data dir ACL: `icacls C:\ProgramData\Skali` lists only SYSTEM and Administrators (no other account or SID, no `(I)` inherited entries). Owner is Administrators or SYSTEM
       (`(Get-Acl C:\ProgramData\Skali).Owner`), as is the repo's. `secret.key` and `skali.db` inherit it (the installer also asserts this).
 - [ ] better-sqlite3 loads under the system Node: in `apps\server`, `node -e "new (require('better-sqlite3'))(':memory:').close()"`
       prints nothing and exits 0.
@@ -170,7 +187,11 @@ Never run these on the dev PC. They need SYSTEM:
 - [ ] `nssm stop Skali` triggers a graceful shutdown: `service.log` shows `... received; shutting down (game servers keep
       running)` and the Valheim process keeps running. `nssm start Skali` brings the UI back.
 - [ ] Kill `valheim_server.exe` in Task Manager: card shows *crashed*, and restarts after 10 s.
-- [ ] Reboot the server PC with Valheim *running*: after boot Valheim is running again (desired state restored).
+- [ ] Reboot the server PC with Valheim *running*: after boot Valheim is running again (desired state restored). Also
+      check the world files' timestamps (`.fwl`/`.db` in the save folder) after the reboot: they show whether the
+      world was saved before the PC went down. Skáli cannot tell an OS shutdown from a service restart, so games get
+      only what Windows sends their console and are not stopped gracefully; a graceful stop-all on OS shutdown
+      is planned for a later release.
 
 ### Config fixtures
 

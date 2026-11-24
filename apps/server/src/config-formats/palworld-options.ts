@@ -18,6 +18,12 @@ export function quotePal(s: string): string {
   return '"' + s.replace(/"/g, '\\"') + '"';
 }
 
+/** Inverse of quotePal for a raw ini value; an unquoted value is returned as is. */
+export function unquotePal(raw: string): string {
+  const t = raw.trim();
+  return t.length >= 2 && t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1).replace(/\\"/g, '"') : t;
+}
+
 const SECTION = "[/Script/Pal.PalGameWorldSettings]";
 const MALFORMED = "Malformed OptionSettings line";
 

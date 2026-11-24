@@ -25,7 +25,7 @@ const defaultIsFile = (p: string): boolean => {
  */
 export function resolveExe(exe: string, cwd: string, opts: ResolveExeOptions = {}): string | null {
   if (path.win32.isAbsolute(exe)) return exe;
-  if (/[\/]/.test(exe)) return path.win32.resolve(cwd, exe);
+  if (/[\\/]/.test(exe)) return path.win32.resolve(cwd, exe);
   const isFile = opts.isFile ?? defaultIsFile;
   const dirs = (opts.pathEnv ?? process.env.PATH ?? "").split(";").map((d) => d.trim().replace(/^"(.*)"$/, "$1")).filter(Boolean);
   const exts = (opts.pathExt ?? process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);

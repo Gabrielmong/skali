@@ -57,7 +57,7 @@ export const valheim: GameAdapter = {
     const l = s.launch;
     const args = [
       "-nographics", "-batchmode",
-      "-name", str(l.name, s.name),
+      "-name", str(l.name) || s.name,
       "-port", String(num(l.port, 2456)),
       "-world", str(l.world, "Dedicated"),
       "-password", str(l.password),

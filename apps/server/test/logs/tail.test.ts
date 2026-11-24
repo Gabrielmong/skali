@@ -51,12 +51,10 @@ describe("FileTailer", () => {
     const got = collect(t);
     t.start();
     await new Promise((r) => setTimeout(r, 30));
-    fs.appendFileSync(file, "World saved
-");
+    fs.appendFileSync(file, "World saved\r\n");
     await t.drain();
     expect(got.flat()).toEqual(["World saved"]);
-    fs.appendFileSync(file, "after
-");
+    fs.appendFileSync(file, "after\r\n");
     await new Promise((r) => setTimeout(r, 30));
     expect(got.flat()).toEqual(["World saved"]);
   });
