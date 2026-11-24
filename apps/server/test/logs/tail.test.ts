@@ -45,6 +45,22 @@ describe("FileTailer", () => {
     t.stop();
   });
 
+  it("drain does one final poll (emitting new lines) and then stops", async () => {
+    fs.writeFileSync(file, "");
+    const t = new FileTailer(file, { fromStart: true, pollMs: 60_000 });
+    const got = collect(t);
+    t.start();
+    await new Promise((r) => setTimeout(r, 30));
+    fs.appendFileSync(file, "World saved
+");
+    await t.drain();
+    expect(got.flat()).toEqual(["World saved"]);
+    fs.appendFileSync(file, "after
+");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(got.flat()).toEqual(["World saved"]);
+  });
+
   it("keeps a split emoji intact", async () => {
     fs.writeFileSync(file, "");
     const t = new FileTailer(file, { fromStart: true, pollMs: 10 });

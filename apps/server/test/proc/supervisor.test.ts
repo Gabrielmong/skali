@@ -91,6 +91,14 @@ class FakeTailer extends EventEmitter {
   stop() {
     this.stopped = true;
   }
+  /** Lines the "file" gets between the last poll and the final drain. */
+  pending: string[] = [];
+  drained = false;
+  async drain() {
+    this.drained = true;
+    if (this.pending.length) this.emit("lines", this.pending);
+    this.stop();
+  }
   push(lines: string[]) {
     this.emit("lines", lines);
   }
@@ -361,6 +369,20 @@ describe("Supervisor: stop", () => {
     expect(text).not.toContain("Forced stop");
   });
 
+  it("stop drains the tailer once so the last lines are emitted live before it stops", async () => {
+    const s = mkServer();
+    const sv = mkSup();
+    await sv.start(s.id);
+    const runId = repo.get(s.id).currentRunId!;
+    tailers[0]!.pending = ["World saved"];
+    const p = sv.stop(s.id);
+    await vi.advanceTimersByTimeAsync(1000);
+    await p;
+    expect(tailers[0]!.drained).toBe(true);
+    expect(tailers[0]!.stopped).toBe(true);
+    expect(events).toContainEqual({ type: "log", serverId: s.id, runId, lines: ["World saved"] });
+  });
+
   it("forced stop: still alive after stopTimeoutSec -> kill(pid, startTime) and 'Forced stop after <n>s'", async () => {
     h.opts.exitOnCtrlC = false;
     const s = mkServer();
@@ -526,6 +548,7 @@ describe("Supervisor: tick", () => {
     expect(repo.get(s.id).pid).toBeNull();
     expect(repo.get(s.id).desired).toBe("running");
     expect(fs.readFileSync(path.join(dir, "logs", s.id, runId, "console.log"), "utf8")).toContain("Process exited unexpectedly");
+    expect(tailers[0]!.drained).toBe(true);
     await vi.advanceTimersByTimeAsync(9_999);
     expect(h.helper.launch).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);

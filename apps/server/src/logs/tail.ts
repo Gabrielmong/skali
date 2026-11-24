@@ -71,6 +71,7 @@ export class FileTailer extends EventEmitter {
   private positioned = false;
   private timer: NodeJS.Timeout | null = null;
   private polling = false;
+  private inflight: Promise<void> | null = null;
   private decoder = new StringDecoder("utf8");
   private partial = "";
   private readonly fromStart: boolean;
@@ -97,12 +98,25 @@ export class FileTailer extends EventEmitter {
     this.timer = null;
   }
 
+  /** Waits for any poll in flight, does one last poll (emitting what is new), then stops. */
+  async drain(): Promise<void> {
+    if (!this.started) return;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    try {
+      await this.inflight;
+      await this.poll();
+    } finally {
+      this.stop();
+    }
+  }
+
   private schedule(ms: number): void {
     if (!this.started) return;
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.poll();
+      this.inflight = this.poll();
     }, ms);
   }
 

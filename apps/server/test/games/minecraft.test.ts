@@ -11,7 +11,7 @@ let fake: FakeRcon | null = null;
 afterEach(async () => { await fake?.close(); fake = null; });
 
 describe("minecraft adapter", () => {
-  it("builds the default launch", () => {
+  it("keeps the bare 'java' in the launch; the supervisor resolves it against PATH", () => {
     const l = minecraft.buildLaunch(rec("minecraft", "C:\\m", { jar: "server.jar", javaPath: "java", memoryMb: 4096, jvmArgs: "" }));
     expect(l.exe).toBe("java");
     expect(l.cwd).toBe("C:\\m");

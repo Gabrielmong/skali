@@ -7,6 +7,7 @@ import { appendSkaliLine, createRun, pruneRuns } from "../logs/runs.js";
 import { FileTailer } from "../logs/tail.js";
 import type { ServerRecord, ServerRepo } from "../servers/repo.js";
 import { Mutex } from "../util/mutex.js";
+import { exeNotFoundMessage, resolveExe } from "../util/resolve-exe.js";
 import { nextCrashAction, CRASH_WINDOW_MS } from "./crash-policy.js";
 import type { Helper, ProcStat } from "./helper.js";
 
@@ -20,6 +21,8 @@ export interface Tailer {
   on(event: string, listener: (...args: any[]) => void): unknown;
   start(): void;
   stop(): void;
+  /** One final poll (emitting any new lines), then stop. Optional: absent means plain stop. */
+  drain?(): Promise<void>;
 }
 
 export interface SupervisorDeps {
@@ -322,7 +325,10 @@ export class Supervisor {
       const cur = prep.secrets && Object.keys(prep.secrets).length
         ? repo.update(rt.id, { secrets: { ...rec.secrets, ...prep.secrets } })
         : rec;
-      const spec = adapter.buildLaunch(cur);
+      const built = adapter.buildLaunch(cur);
+      const exe = resolveExe(built.exe, built.cwd);
+      if (exe === null) throw new BadRequestError(exeNotFoundMessage(built.exe));
+      const spec = { ...built, exe };
       await this.log(rt, `Starting ${describeLaunch(spec, secretValues(adapter, cur))}`, false);
       launched = await helper.launch({
         exe: spec.exe,
@@ -505,7 +511,7 @@ export class Supervisor {
       }
     }
 
-    this.stopTailer(rt);
+    await this.drainTailer(rt);
     rt.lastCpu = null;
     if (knownGone) {
       rt.pid = null;
@@ -600,7 +606,7 @@ export class Supervisor {
     const now = this.now();
     rt.gen++;
     this.clearReady(rt);
-    this.stopTailer(rt);
+    await this.drainTailer(rt);
     rt.pid = null;
     rt.pidStartTime = null;
     rt.lastCpu = null;
@@ -731,6 +737,20 @@ export class Supervisor {
     });
     rt.tailer = t;
     t.start();
+  }
+
+  /** Lets the tailer emit the last lines (e.g. "World saved") before stopping it. Bounded; never throws. */
+  private async drainTailer(rt: Runtime): Promise<void> {
+    const t = rt.tailer;
+    if (t?.drain) {
+      try {
+        await settleWithin(t.drain(), 1_000);
+      } catch {
+        // ignore
+      }
+    }
+    if (rt.tailer === t) this.stopTailer(rt);
+    else try { t?.stop(); } catch { /* ignore */ }
   }
 
   private stopTailer(rt: Runtime): void {
