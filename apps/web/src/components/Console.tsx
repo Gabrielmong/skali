@@ -3,7 +3,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import { Alert, Box, Button, Chip, InputAdornment, Stack, TextField } from '@mui/material'
 import type { RunInfo } from '@skali/shared'
 import { AnsiUp } from 'ansi_up'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { ApiError, getRunLog, getRuns, runLogUrl, sendCommand } from '../api.ts'
 
 export const MAX_DISPLAY_LINES = 5_000
@@ -13,18 +13,65 @@ const CACHE_LIMIT = 20_000
 
 const lineCache = new Map<string, string>()
 
-/** One log line as an HTML <div>. The text goes through AnsiUp with escape_html on, so nothing in it is markup. */
+/** One log line as inner HTML. The text goes through AnsiUp with escape_html on, so nothing in it is markup. */
 function lineHtml(line: string): string {
   const hit = lineCache.get(line)
   if (hit !== undefined) return hit
   // A fresh instance per line: colour state must not leak from one line into the next (lines are cached).
   const ansi = new AnsiUp()
   ansi.escape_html = true
-  const body = ansi.ansi_to_html(line.replace(/\r/g, ''))
-  const html = `<div class="${line.startsWith('[skali] ') ? 'l skali-line' : 'l'}">${body}</div>`
+  // No OSC-8 hyperlinks: a log line must not be able to put a navigable link on the page.
+  ansi.url_allowlist = {}
+  const html = ansi.ansi_to_html(line.split(String.fromCharCode(13)).join(''))
   if (lineCache.size >= CACHE_LIMIT) lineCache.clear()
   lineCache.set(line, html)
   return html
+}
+
+const Row = memo(function Row({ line }: { line: string }) {
+  return (
+    <div
+      className={line.startsWith('[skali] ') ? 'l skali-line' : 'l'}
+      dangerouslySetInnerHTML={{ __html: lineHtml(line) }}
+    />
+  )
+})
+
+/**
+ * Stable absolute keys for a sliding window of lines: when the new window overlaps the previous one (appends and
+ * dropped-oldest), rows keep their key so React leaves their DOM alone; otherwise a new epoch starts.
+ */
+function useLineKeys(lines: string[]): string[] {
+  const state = useRef({ prev: [] as string[], base: 0, epoch: 0 })
+  return useMemo(() => {
+    const st = state.current
+    const prev = st.prev
+    let shift = -1
+    if (prev.length > 0 && lines.length > 0) {
+      for (let s = 0; s < prev.length; s++) {
+        if (prev[s] !== lines[0]) continue
+        const n = Math.min(prev.length - s, lines.length)
+        let same = true
+        for (let i = 1; i < n; i++) {
+          if (prev[s + i] !== lines[i]) {
+            same = false
+            break
+          }
+        }
+        if (same) {
+          shift = s
+          break
+        }
+      }
+    }
+    if (shift >= 0) st.base += shift
+    else {
+      st.epoch++
+      st.base = 0
+    }
+    st.prev = lines
+    return lines.map((_, i) => `${st.epoch}:${st.base + i}`)
+  }, [lines])
 }
 
 function toLines(text: string): { lines: string[]; total: number } {
@@ -89,16 +136,20 @@ export function Console({ serverId, lines, liveRunId, hasCommands, commandHelp }
   }, [serverId])
 
   const shown = earlier ? earlier.lines : lines
-  const html = useMemo(() => {
+  const keys = useLineKeys(shown)
+  const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const visible = q ? shown.filter((l) => l.toLowerCase().includes(q)) : shown
-    return visible.map(lineHtml).join('')
-  }, [shown, search])
+    const out: { key: string; line: string }[] = []
+    shown.forEach((line, i) => {
+      if (!q || line.toLowerCase().includes(q)) out.push({ key: keys[i]!, line })
+    })
+    return out
+  }, [shown, keys, search])
 
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (el && pinned.current) el.scrollTop = el.scrollHeight
-  }, [html])
+  }, [rows])
 
   const onScroll = () => {
     const el = scrollRef.current
@@ -275,7 +326,11 @@ export function Console({ serverId, lines, liveRunId, hasCommands, commandHelp }
             '& .skali-line': { opacity: 0.55 },
           }}
         >
-          <div dangerouslySetInnerHTML={{ __html: html }} />
+          <div>
+            {rows.map((r) => (
+              <Row key={r.key} line={r.line} />
+            ))}
+          </div>
         </Box>
         {showJump && (
           <Chip

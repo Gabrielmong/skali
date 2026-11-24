@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { adoptServer, getGames, inspectFolder, type ValheimWorld } from '../api.ts'
 import { FolderPicker } from './FolderPicker.tsx'
-import { LaunchFieldsForm } from './LaunchFieldsForm.tsx'
+import { LaunchFieldsForm, launchFormValid } from './LaunchFieldsForm.tsx'
 
 const ORDER: GameId[] = ['palworld', 'valheim', 'minecraft', 'basic']
 const LABELS: Partial<Record<GameId, string>> = { basic: 'Other (basic)' }
@@ -107,7 +107,7 @@ export function AddServerDialog({ open, onClose }: Props) {
   }
 
   const needsEula = game?.id === 'minecraft'
-  const canCreate = !creating && name.trim() !== '' && (!needsEula || eula)
+  const canCreate = !creating && name.trim() !== '' && (!needsEula || eula) && (!game || launchFormValid(game.launchFields, launch))
 
   const create = async () => {
     if (!game) return
@@ -132,7 +132,13 @@ export function AddServerDialog({ open, onClose }: Props) {
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog
+      open={open}
+      onClose={(_e, reason) => {
+        if (reason === 'backdropClick' || creating) return
+        onClose()
+      }}
+      fullWidth maxWidth="sm">
       <DialogTitle>
         Add existing server
         <Typography variant="body2" color="text.secondary">
@@ -175,7 +181,7 @@ export function AddServerDialog({ open, onClose }: Props) {
               </Alert>
             ))}
             <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth required />
-            <LaunchFieldsForm fields={game.launchFields} values={launch} onChange={setLaunch} />
+            <LaunchFieldsForm fields={game.launchFields} values={launch} onChange={setLaunch} disabled={creating} />
             {game.id === 'valheim' && worlds.length > 0 && (
               <TextField
                 select
@@ -219,7 +225,9 @@ export function AddServerDialog({ open, onClose }: Props) {
             </Button>
           )}
         </Box>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose} disabled={creating}>
+          Cancel
+        </Button>
         {step === 'details' && (
           <Button variant="contained" disabled={!canCreate} onClick={() => void create()}>
             Create

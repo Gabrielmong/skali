@@ -118,5 +118,5 @@ export function ServerPage() {
       </Box>
     )
   }
-  return <Detail server={server} game={games.find((g) => g.id === server.game)} />
+  return <Detail key={server.id} server={server} game={games.find((g) => g.id === server.game)} />
 }

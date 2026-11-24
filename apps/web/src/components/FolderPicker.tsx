@@ -31,6 +31,12 @@ export function FolderPicker({ onSelect, disabled }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [target, setTarget] = useState<string | undefined>(undefined)
+  /** Bumped on every navigation so retrying the same (just failed) folder fetches again. */
+  const [nav, setNav] = useState(0)
+  const go = (t: string | undefined) => {
+    setTarget(t)
+    setNav((n) => n + 1)
+  }
 
   useEffect(() => {
     let alive = true
@@ -51,7 +57,7 @@ export function FolderPicker({ onSelect, disabled }: Props) {
     return () => {
       alive = false
     }
-  }, [target])
+  }, [target, nav])
 
   const path = listing?.path ?? null
   const childOf = (name: string) => (path === null ? name : join(path, name))
@@ -63,7 +69,7 @@ export function FolderPicker({ onSelect, disabled }: Props) {
           size="small"
           startIcon={<ArrowUpwardIcon />}
           disabled={path === null || loading}
-          onClick={() => setTarget(listing?.parent ?? undefined)}
+          onClick={() => go(listing?.parent ?? undefined)}
           aria-label="Up"
         >
           Up
@@ -77,7 +83,7 @@ export function FolderPicker({ onSelect, disabled }: Props) {
       <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, height: 280, overflow: 'auto' }}>
         <List dense disablePadding>
           {listing?.dirs.map((d) => (
-            <ListItemButton key={d} disabled={loading} onClick={() => setTarget(childOf(d))}>
+            <ListItemButton key={d} disabled={loading} onClick={() => go(childOf(d))}>
               <ListItemIcon sx={{ minWidth: 36 }}>{path === null ? <StorageIcon /> : <FolderIcon />}</ListItemIcon>
               <ListItemText primary={d} />
             </ListItemButton>

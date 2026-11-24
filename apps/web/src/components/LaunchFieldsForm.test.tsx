@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { FieldSpec } from '@skali/shared'
 import { describe, expect, it, vi } from 'vitest'
-import { LaunchFieldsForm } from './LaunchFieldsForm.tsx'
+import { LaunchFieldsForm, launchFormValid } from './LaunchFieldsForm.tsx'
 
 const fields: FieldSpec[] = [
   { key: 'public', label: 'Public', type: 'switch', help: 'Show in the community list' },
@@ -34,6 +34,34 @@ describe('LaunchFieldsForm', () => {
     expect(input).toHaveAttribute('max', '32')
     await userEvent.type(input, '0')
     expect(onChange).toHaveBeenLastCalledWith({ players: 40 })
+  })
+
+  it('shows a stored (masked) password as an empty Unchanged field', async () => {
+    const onChange = vi.fn()
+    render(<LaunchFieldsForm fields={fields} values={{ password: '****' }} onChange={onChange} />)
+    const input = screen.getByLabelText('Password')
+    expect(input).toHaveValue('')
+    expect(input).toHaveAttribute('placeholder', 'Unchanged')
+    await userEvent.click(screen.getByRole('button', { name: 'Show password' }))
+    expect(input).toHaveValue('')
+    await userEvent.type(input, 'x')
+    expect(onChange).toHaveBeenLastCalledWith({ password: 'x' })
+  })
+
+  it('an explicit clear of a typed password sends an empty string', async () => {
+    const onChange = vi.fn()
+    render(<LaunchFieldsForm fields={fields} values={{ password: 'abc' }} onChange={onChange} />)
+    await userEvent.clear(screen.getByLabelText('Password'))
+    expect(onChange).toHaveBeenLastCalledWith({ password: '' })
+  })
+
+  it('flags an emptied number field, and launchFormValid reports it', () => {
+    render(<LaunchFieldsForm fields={fields} values={{ players: '' }} onChange={() => {}} />)
+    expect(screen.getByText(/Enter a number between 1 and 32/)).toBeInTheDocument()
+    expect(launchFormValid(fields, { players: '' })).toBe(false)
+    expect(launchFormValid(fields, { players: 4 })).toBe(true)
+    expect(launchFormValid(fields, { players: 99 })).toBe(false)
+    expect(launchFormValid(fields, {})).toBe(true)
   })
 
   it('reports text and switch changes', async () => {

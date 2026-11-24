@@ -20,12 +20,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import type { FieldSpec, GameInfo, LaunchValues, ServerView } from '@skali/shared'
+import { MINECRAFT_EULA_NOTE, type FieldSpec, type GameInfo, type LaunchValues, type ServerView } from '@skali/shared'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { acceptEula, deleteServer, inspectFolder, patchServer, type ServerPatch } from '../api.ts'
 import { ErrorSnackbar, errorMessage } from './ServerActions.tsx'
-import { LaunchFieldsForm } from './LaunchFieldsForm.tsx'
+import { LaunchFieldsForm, launchFormValid } from './LaunchFieldsForm.tsx'
 
 interface Props {
   server: ServerView
@@ -60,26 +60,28 @@ export function OverviewTab({ server, game, onRestart }: Props) {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [eulaMissing, setEulaMissing] = useState(false)
 
-  // Re-sync the form with the server's copy unless the user has unsaved edits.
-  const [syncedFrom, setSyncedFrom] = useState(saved)
-  if (syncedFrom !== saved) {
-    if (sameLaunch(values, syncedFrom)) setValues(saved)
-    setSyncedFrom(saved)
+  // `baseline` is the last server copy the form was reconciled with; unsaved edits survive server updates.
+  const [baseline, setBaseline] = useState(saved)
+  const [seen, setSeen] = useState(saved)
+  if (seen !== saved) {
+    if (sameLaunch(values, baseline)) setValues(saved)
+    setBaseline(saved)
+    setSeen(saved)
   }
   useEffect(() => setStopTimeout(String(server.stopTimeoutSec)), [server.stopTimeoutSec])
 
-  const dirty = !sameLaunch(values, saved)
+  const dirty = !sameLaunch(values, baseline)
+  const valid = launchFormValid(fields, values)
   const running = server.status === 'running' || server.status === 'starting' || server.status === 'stopping'
   const canDelete = server.status === 'stopped' || server.status === 'crashed'
 
   const patch = useCallback(
-    async (p: ServerPatch): Promise<boolean> => {
+    async (p: ServerPatch): Promise<ServerView | null> => {
       try {
-        await patchServer(server.id, p)
-        return true
+        return await patchServer(server.id, p)
       } catch (e) {
         setError(errorMessage(e))
-        return false
+        return null
       }
     },
     [server.id],
@@ -88,7 +90,7 @@ export function OverviewTab({ server, game, onRestart }: Props) {
   const checkEula = useCallback(() => {
     if (server.game !== 'minecraft') return
     inspectFolder(server.game, server.folder).then(
-      (r) => setEulaMissing(r.ok && r.notes.some((n) => /eula/i.test(n))),
+      (r) => setEulaMissing(r.ok && r.notes.includes(MINECRAFT_EULA_NOTE)),
       () => setEulaMissing(false),
     )
   }, [server.game, server.folder])
@@ -96,9 +98,13 @@ export function OverviewTab({ server, game, onRestart }: Props) {
 
   const save = async () => {
     setSaving(true)
-    const ok = await patch({ launch: values })
+    const view = await patch({ launch: values })
     setSaving(false)
-    if (!ok) return
+    if (!view) return
+    // The view masks passwords again; drop any plaintext the user typed.
+    const next = declaredOnly(view.launch, fields)
+    setValues(next)
+    setBaseline(next)
     if (running) setNeedsRestart(true)
     else setToast('Saved')
   }
@@ -227,7 +233,7 @@ export function OverviewTab({ server, game, onRestart }: Props) {
           )}
           {fields.length > 0 && (
             <Box>
-              <Button variant="contained" disabled={!dirty || saving} onClick={() => void save()}>
+              <Button variant="contained" disabled={!dirty || !valid || saving} onClick={() => void save()}>
                 Save
               </Button>
             </Box>

@@ -117,3 +117,6 @@ export function isValidAllowEntry(s: string): boolean {
   const parts = (addr ?? "").split(".");
   return parts.length === 4 && parts.every((p) => ALLOW_OCTET.test(p) && Number(p) <= 255);
 }
+
+/** Inspect note the Minecraft adapter emits while eula.txt is missing or not accepted; the UI keys off it. */
+export const MINECRAFT_EULA_NOTE = "Accept the Minecraft EULA before the first start (server Overview)";

@@ -4,6 +4,23 @@ import { FormControlLabel, FormHelperText, IconButton, InputAdornment, Stack, Sw
 import type { FieldSpec, LaunchValues } from '@skali/shared'
 import { useState } from 'react'
 
+const MASK = '****'
+
+function numberProblem(f: FieldSpec, v: string | number | boolean | undefined): string | null {
+  if (f.type !== 'number' || v === undefined) return null
+  const lo = f.min
+  const hi = f.max
+  const range = lo !== undefined && hi !== undefined ? ` between ${lo} and ${hi}` : lo !== undefined ? ` of at least ${lo}` : hi !== undefined ? ` of at most ${hi}` : ''
+  if (v === '' || typeof v !== 'number' || !Number.isFinite(v)) return `Enter a number${range}`
+  if ((lo !== undefined && v < lo) || (hi !== undefined && v > hi)) return `Enter a number${range}`
+  return null
+}
+
+/** False while any number field is empty or out of range; Save/Create should be disabled then. */
+export function launchFormValid(fields: FieldSpec[], values: LaunchValues): boolean {
+  return fields.every((f) => numberProblem(f, values[f.key] ?? f.default) === null)
+}
+
 interface Props {
   fields: FieldSpec[]
   values: LaunchValues
@@ -27,7 +44,8 @@ function PasswordField({
     <TextField
       label={field.label}
       type={show ? 'text' : 'password'}
-      value={value}
+      value={value === MASK ? '' : value}
+      placeholder={value === MASK ? 'Unchanged' : undefined}
       onChange={(e) => onChange(e.target.value)}
       helperText={field.help}
       disabled={disabled}
@@ -72,7 +90,8 @@ export function LaunchFieldsForm({ fields, values, onChange, disabled }: Props) 
                 {f.help && <FormHelperText sx={{ mt: -0.5, ml: 0 }}>{f.help}</FormHelperText>}
               </div>
             )
-          case 'number':
+          case 'number': {
+            const problem = numberProblem(f, current)
             return (
               <TextField
                 key={f.key}
@@ -80,12 +99,14 @@ export function LaunchFieldsForm({ fields, values, onChange, disabled }: Props) 
                 type="number"
                 value={current ?? ''}
                 disabled={disabled}
-                helperText={f.help}
+                error={problem !== null}
+                helperText={problem ?? f.help}
                 fullWidth
                 onChange={(e) => set(f.key, e.target.value === '' ? '' : Number(e.target.value))}
                 slotProps={{ htmlInput: { min: f.min, max: f.max } }}
               />
             )
+          }
           case 'password':
             return (
               <PasswordField

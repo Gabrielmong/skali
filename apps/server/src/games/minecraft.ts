@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { MINECRAFT_EULA_NOTE } from "@skali/shared";
 import { BadRequestError } from "../errors.js";
 import { withRcon } from "../channels/rcon.js";
 import { parseProperties } from "../config-formats/properties.js";
@@ -49,7 +50,7 @@ export const minecraft: GameAdapter = {
       jars.find((j) => lower(j).includes("server")) ??
       jars[0]!;
     const notes: string[] = [];
-    if (!hasEula(folder)) notes.push("Accept the Minecraft EULA before the first start (server Overview)");
+    if (!hasEula(folder)) notes.push(MINECRAFT_EULA_NOTE);
     return {
       ok: true,
       exe: "java",

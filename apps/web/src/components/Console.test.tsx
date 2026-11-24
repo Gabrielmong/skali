@@ -53,6 +53,23 @@ describe('Console', () => {
     expect(box.scrollTop).toBe(0)
   })
 
+  it('appends new lines without replacing existing rows, also when the oldest are dropped', () => {
+    const { rerender } = renderConsole({ lines: ['a', 'b', 'c'] })
+    const b = screen.getByText('b')
+    const c = screen.getByText('c')
+    rerender(<Console serverId="s1" lines={['a', 'b', 'c', 'd']} hasCommands={true} />)
+    expect(screen.getByText('b')).toBe(b)
+    rerender(<Console serverId="s1" lines={['b', 'c', 'd', 'e']} hasCommands={true} />)
+    expect(screen.getByText('b')).toBe(b)
+    expect(screen.getByText('c')).toBe(c)
+    expect(screen.queryByText('a')).toBeNull()
+  })
+
+  it('does not turn OSC-8 links into anchors', () => {
+    const { container } = renderConsole({ lines: ['\u001b]8;;https://evil.example\u0007click\u001b]8;;\u0007'] })
+    expect(container.querySelector('a')).toBeNull()
+  })
+
   it('dims [skali] lines', () => {
     renderConsole({ lines: ['[skali] Server started', 'plain line'] })
     expect(screen.getByText('[skali] Server started')).toHaveClass('skali-line')
