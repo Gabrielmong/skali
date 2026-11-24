@@ -46,6 +46,11 @@ if ($profileRoots | Where-Object { $repo.StartsWith($_.TrimEnd([char]92) + [stri
     Write-Warning "The repo ($repo) is under a user profile or OneDrive. The lockdown breaks OneDrive sync and LocalSystem can't read Files On-Demand placeholders. Use a plain local folder such as C:\skali."
 }
 
+if ($DryRun) {
+    $longPaths = (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -ErrorAction SilentlyContinue).LongPathsEnabled
+    if ($longPaths -ne 1) { Write-Warning 'Win32 long paths are not enabled (HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled is not 1). A very long node_modules path can make the repo ACL reset fail and abort the install. See docs/RUNNING.md.' }
+}
+
 $node = $null
 try {
     $node = Get-NodePath

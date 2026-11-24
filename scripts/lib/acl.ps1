@@ -167,12 +167,15 @@ function Get-TreeEntries([string]$Root, [switch]$ReparseOnly) {
     [pscustomobject]@{ Reparse = $reparse; Dirs = $dirs; Files = $files }
 }
 
-# Absolute target of a junction/symlink, or $null when it cannot be resolved.
+# Strict target of a junction/symlink for the repo link check. Returns $null when there is none. A leading \??\ or \\?\
+# is stripped; anything that is then not an absolute drive-letter path (Volume{GUID}\..., UNC, relative) is returned as
+# is, which never lies inside the repo, so the caller treats it as OUTSIDE. PS 5.1 already strips \??\ from .Target, so
+# a volume-GUID junction shows up as 'Volume{...}\...' and must not be joined to the link's parent directory.
 function Get-ReparseTarget([string]$Path) {
     $t = @((Get-Item -LiteralPath $Path -Force).Target) | Where-Object { $_ } | Select-Object -First 1
     if (-not $t) { return $null }
-    $t = "$t" -replace '^\\\?\?\\', ''
-    if (-not [IO.Path]::IsPathRooted($t)) { $t = Join-Path (Split-Path $Path -Parent) $t }
+    $t = "$t" -replace '^\\(\?\?|\\\?)\\', ''
+    if ($t -notmatch '^[A-Za-z]:\\') { return $t }
     [IO.Path]::GetFullPath($t).TrimEnd('\')
 }
 
@@ -217,10 +220,21 @@ function Get-RepoLinkProblems([string]$Repo) {
 # /L applies a change to a junction/symlink itself rather than to its target. It does NOT stop /T from traversing
 # through junctions, so before any recursive icacls every link under the repo is enumerated and the install aborts if
 # one resolves outside the repo root. pnpm's node_modules junctions point inside the repo, which is fine.
-# Order: link check, setowner /T, strip the root's other explicit ACEs, inheritance:r + grant on the root, then
-# `/reset /T` on the children so they inherit only from the locked root (no explicit ACE on a file a user created).
+# Link targets are judged strictly (Get-ReparseTarget): only an absolute drive-letter path inside the repo passes;
+# Volume{GUID}, UNC and relative targets count as outside.
+# Order:
+#   1. Lock the ROOT only, no recursion: setowner on the root, strip its foreign explicit ACEs, inheritance:r + grant.
+#      From then on non-admins cannot add or change entries under the root (children inherit), except children that
+#      already carry an explicit ACE of their own.
+#   2. Walk the tree (links are not descended into) and refuse any link that points outside the repo.
+#   3. Only then the recursive `setowner /T /C /L` and `"<repo>\*" /reset /T /C /L`.
+#   4. Walk again and abort if an outside link appeared.
+# Remaining window: a child that had a pre-existing explicit ACE for a non-admin could still gain a new link between
+# walk 1 and the reset. Resetting the children first is not safe before the link check (it would traverse links), so
+# the second walk after the reset detects and aborts on such a link. The abort is after the fact for that one race, but
+# by then the reset has removed every explicit ACE, so nobody but admins can add anything further.
 function Protect-RepoDirectory([string]$Repo, [switch]$DryRun) {
-    $desc = "icacls $Repo /setowner Administrators /T /C /L, strip other explicit root ACEs, /inheritance:r /C /L + grant, then $Repo\* /reset /T /C /L (admins/SYSTEM only; /L acts on links themselves, /T still traverses them)"
+    $desc = "icacls $Repo /setowner Administrators /C /L (root only), strip other explicit root ACEs, /inheritance:r /C /L + grant (root only); then link check; then /setowner /T /C /L, $Repo\* /reset /T /C /L, and a second link check (admins/SYSTEM only; /L acts on links themselves, /T still traverses them)"
     if ($DryRun) {
         Write-Host "[dry-run] checking that no junction/symlink under $Repo resolves outside it"
         try {
@@ -232,18 +246,27 @@ function Protect-RepoDirectory([string]$Repo, [switch]$DryRun) {
         catch { Write-Host "[dry-run] would fail: cannot read the ACL of $Repo ($($_.Exception.Message))" }
         return
     }
-    $bad = @(Get-RepoLinkProblems $Repo)
-    if ($bad) { throw "Refusing to run recursive icacls over the repo: $($bad -join '; ')" }
     Write-Host $desc
-    $owned = Invoke-IcaclsTolerant @($Repo, '/setowner', $script:Admins, '/T', '/C', '/L')
-    if ($owned.ExitCode -ne 0 -or $owned.Failed -gt 0) { Write-Warning "icacls /setowner exit code $($owned.ExitCode), $($owned.Failed) item(s) failed; checking the repo root owner next." }
+    if (Test-IsReparsePoint $Repo) { throw "$Repo is itself a junction/symlink; refusing to lock it down." }
+    # 1. Root only.
+    $owned = Invoke-IcaclsTolerant @($Repo, '/setowner', $script:Admins, '/C', '/L')
+    if ($owned.ExitCode -ne 0) { throw "icacls /setowner on the repo root failed (exit code $($owned.ExitCode)): $($owned.Output -join ' ')" }
     Remove-UntrustedExplicitAces $Repo | Out-Null
     $result = Invoke-IcaclsTolerant @($Repo, '/inheritance:r', '/C', '/L', '/grant:r', "$($script:Admins):(OI)(CI)F", "$($script:System):(OI)(CI)F")
-    if ($result.ExitCode -ne 0 -or $result.Failed -gt 0) {
-        Write-Warning "icacls exit code $($result.ExitCode), $($result.Failed) item(s) failed; checking the repo root ACL next."
-    }
+    if ($result.ExitCode -ne 0 -or $result.Failed -gt 0) { throw "icacls /inheritance:r on the repo root failed (exit code $($result.ExitCode), $($result.Failed) item(s)): $($result.Output -join ' ')" }
+    # 2. Links.
+    $bad = @(Get-RepoLinkProblems $Repo)
+    if ($bad) { throw "Refusing to run recursive icacls over the repo (the root is already locked): $($bad -join '; ')" }
+    # 3. Recursive.
+    $owned = Invoke-IcaclsTolerant @($Repo, '/setowner', $script:Admins, '/T', '/C', '/L')
+    if ($owned.ExitCode -ne 0 -or $owned.Failed -gt 0) { Write-Warning "icacls /setowner /T exit code $($owned.ExitCode), $($owned.Failed) item(s) failed; the owner checks below decide." }
     $reset = Invoke-IcaclsTolerant @("$Repo\*", '/reset', '/T', '/C', '/L')
-    if ($reset.ExitCode -ne 0 -or $reset.Failed -gt 0) { Write-Warning "icacls /reset exit code $($reset.ExitCode), $($reset.Failed) item(s) failed; the sampled child check below decides." }
+    if ($reset.ExitCode -ne 0 -or $reset.Failed -gt 0) { throw "icacls /reset of the repo children failed (exit code $($reset.ExitCode), $($reset.Failed) item(s)); a child may keep an explicit ACE. $($reset.Output -join ' ')" }
+    # 4. Second walk. Residual risk: someone who could write to the repo before its first lockdown could swap a folder they
+    # own for a link during the recursive icacls above; this walk detects that and aborts, but only afterwards. Clone onto a
+    # PC with no untrusted local accounts (such a person could already tamper with code that later runs as SYSTEM).
+    $bad = @(Get-RepoLinkProblems $Repo)
+    if ($bad) { throw "A link pointing outside the repo appeared during the lockdown: $($bad -join '; ')" }
     Assert-RepoRootAcl $Repo
 }
 

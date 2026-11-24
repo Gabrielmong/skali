@@ -16,6 +16,11 @@ uninstalling the `Skali` service never stops them.
 | NSSM | `choco install nssm` |
 | Build tools (only if better-sqlite3 has no prebuilt binary for your Node) | `winget install Microsoft.VisualStudio.2022.BuildTools` with the "Desktop development with C++" workload |
 
+**Enable Win32 long paths** on the server PC (the dev repo's deepest `node_modules` path is about 257 characters even under `C:\skali`).
+From an elevated shell: `New-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem -Name LongPathsEnabled -Value 1 -PropertyType DWORD -Force`.
+Keep the repo at `C:\skali`. The repo lockdown treats a failed ACL reset as fatal, so if a path is too long the installer aborts
+(safely, with the repo root already locked) instead of leaving a child with a stale ACL. The install dry run warns when it is not 1.
+
 The server PC's network must be on the **Private** profile: the web UI firewall rule only applies to Private networks.
 
 **Where to put the repo:** clone it to a plain local folder such as `C:\skali` (the admin tests assume this too). Do
@@ -37,9 +42,10 @@ From an elevated PowerShell in the repo:
 It checks the tools, deletes a hard-linked `node_modules` if one exists, runs `pnpm install --frozen-lockfile`,
 verifies better-sqlite3 loads under the system Node, runs `pnpm build` (shared, server, web, and a
 `dotnet publish -c Release` of SkaliHelper to `tools\SkaliHelper\publish\SkaliHelper.exe`, where the server looks for it), and only
-**then** locks the repo down to admins/SYSTEM (it also makes Administrators the owner of the repo and data dir, so
+**then** locks the repo down to admins/SYSTEM (it also makes Administrators the owner of the repo, so
 the installing user cannot re-grant themselves access), creates
-`C:\ProgramData\Skali` with SYSTEM + Administrators only (inheritance off) **before** the service first starts,
+`C:\ProgramData\Skali` with SYSTEM + Administrators only (inheritance off, owner Administrators) **before** the service first starts
+(or refuses an existing one it cannot trust, see below),
 installs/updates the service, adds the firewall rule `Skali web (TCP 4100)` (Private, local subnet, node.exe only),
 starts the service and checks `GET http://127.0.0.1:4100/api/games` returns 200 and the data dir ACL.
 
@@ -50,11 +56,29 @@ LocalSystem runs). A lockdown over an existing linked `node_modules` would rewri
 other pnpm project on the PC. With `copy`, install writes private files that simply inherit the repo ACL, and the
 installer deletes an old hard-linked `node_modules` first (this removes only this repo's links) and fails if any
 remain. The repo ACL commands use icacls `/L`, which applies a change to a junction itself rather than to its target; it does **not**
-stop `/T` from traversing through junctions. Today every `node_modules` junction points inside the repo, so nothing outside it
-is touched. Both lockdowns first remove every explicit ACE on the root that is not SYSTEM or Administrators (`icacls /grant:r`
-replaces only the principals it names, so an ACE a user added to a pre-created folder would otherwise survive), and the
-data dir children are reset to inherit only. The installer asserts the root ACL against an allowlist: any other principal fails it.
-Check after an install: `fsutil hardlink list C:\skali\node_modules\.pnpm\express@5.3.0\node_modules\express\index.js` prints a single line.
+stop `/T` from traversing through junctions. So before any recursive icacls the installer enumerates every junction/symlink
+under the repo and aborts if one resolves outside it; today every `node_modules` junction points inside the repo. A link target
+counts as inside only if it is an absolute drive-letter path within the repo: `Volume{GUID}`, UNC and relative targets are
+treated as outside. The order is: lock the repo root alone first (owner, foreign explicit ACEs removed, inheritance off, grant),
+then check the links, then the recursive `setowner /T` and `icacls <repo>\* /reset /T /C /L` (a reset failure aborts), then check
+the links again. Every child then inherits only from the locked root. The installer asserts the root (allowlist, no Deny ACEs) and samples the children for explicit foreign ACEs.
+
+**Data dir: trusted or refused, never repaired.** If `C:\ProgramData\Skali` does not exist the installer creates it in one call,
+already owned by Administrators with a protected ACL (SYSTEM + Administrators full control only). If it exists it is accepted only
+when it is not a junction (nor any ancestor up to `C:\ProgramData`), is owned by Administrators/SYSTEM, has a protected root ACL with
+only SYSTEM + Administrators (Allow), contains no junction/symlink, and every file in it is admin/SYSTEM-owned, has no foreign explicit
+ACE and has a single hard link. An update of a dir the installer made passes and is left untouched. Anything else (for example a dir a
+user pre-created, which could hold a chosen `secret.key`, a seeded database, open handles or links) stops the install with a message:
+if it holds no Skali data you need, delete it from an elevated shell (`Remove-Item -Recurse -Force C:\ProgramData\Skali`) and re-run.
+`-DryRun` prints which of the three paths would be taken. If you restore a backup file into `C:\ProgramData\Skali`, first reset its
+ACL: `icacls <file> /setowner *S-1-5-32-544` FIRST, then `icacls <file> /reset` (`/reset` is denied on a moved file that does not
+grant Administrators access, so take ownership first). A moved or copied-with-ACL file keeps its old owner and
+ACEs, and the next update would refuse the whole directory.
+
+**Residual risk of the repo lockdown:** anyone who could write to the repo before its first lockdown could, during the recursive
+icacls, swap a folder they own for a junction. The installer's second link check detects this and aborts, but only afterwards.
+Clone onto a PC with no untrusted local accounts. Such a person could already tamper with code that later runs as SYSTEM, so the
+lockdown does not protect against them anyway. Check after an install: `fsutil hardlink list C:\skali\node_modules\.pnpm\express@5.3.0\node_modules\express\index.js` prints a single line.
 
 `-AllowIp` only seeds the allowlist of a **new** database. Afterwards edit it on the Settings page.
 `127.0.0.1` is always allowed.
