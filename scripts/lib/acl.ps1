@@ -101,6 +101,16 @@ function Test-NodeModulesHardLinked([string]$Repo, [int]$Sample = 300) {
 # root, where every file it writes inherits the locked ACL. cmd's `rmdir /s /q` removes junctions WITHOUT following them
 # (PowerShell 5.1 Remove-Item -Recurse can follow them into their targets, so it is never used here). Each path is
 # resolved first and must be inside the repo, and none of its parent folders (up to the repo) may be a link.
+# Throws unless every parent of $Full up to the repo root is a real folder (no junction/symlink) still inside the repo.
+function Assert-ParentsNotLinks([string]$Full, [string]$RepoFull) {
+    $parent = Split-Path $Full -Parent
+    while ($parent -and $parent -ine $RepoFull) {
+        if (-not (Test-PathInside $parent $RepoFull)) { throw "Refusing to delete ${Full}: parent $parent is outside the repo." }
+        if (Test-IsReparsePoint $parent) { throw "Refusing to delete ${Full}: its parent $parent is a junction/symlink." }
+        $parent = Split-Path $parent -Parent
+    }
+}
+
 function Remove-NodeModulesDirs([string]$Repo, [switch]$DryRun) {
     $repoFull = [IO.Path]::GetFullPath($Repo).TrimEnd('\')
     $dirs = @(Get-NodeModulesDirs $Repo)
@@ -108,13 +118,10 @@ function Remove-NodeModulesDirs([string]$Repo, [switch]$DryRun) {
     foreach ($d in $dirs) {
         $full = [IO.Path]::GetFullPath($d).TrimEnd('\')
         if (-not (Test-PathInside $full $repoFull) -or $full -ieq $repoFull) { throw "Refusing to delete ${d}: it resolves outside the repo ($full)." }
-        $parent = Split-Path $full -Parent
-        while ($parent -and $parent -ine $repoFull) {
-            if (Test-IsReparsePoint $parent) { throw "Refusing to delete ${d}: its parent $parent is a junction/symlink." }
-            $parent = Split-Path $parent -Parent
-        }
+        Assert-ParentsNotLinks $full $repoFull
         if ($DryRun) { Write-Host "[dry-run] would delete $full (cmd rmdir /s /q, junctions are not followed); pnpm install recreates it after the lockdown"; continue }
         Write-Host "Deleting $full (pnpm install recreates it after the lockdown)"
+        Assert-ParentsNotLinks $full $repoFull   # re-check immediately before the delete, not only up front
         & cmd.exe /c rmdir /s /q "`"$full`""
         if (Get-Item -LiteralPath $full -Force -ErrorAction SilentlyContinue) { throw "Could not delete $full" }
     }
@@ -307,10 +314,10 @@ function Assert-RepoRootAcl([string]$Repo) {
     }
     $bad = @()
     foreach ($s in $sample) {
-        try { $cv = @(Get-AclViolations $s -ExplicitOnly) } catch { $bad += "$s (ACL unreadable: $($_.Exception.Message))"; continue }
+        try { $cv = @(Get-AclViolations $s) } catch { $bad += "$s (ACL unreadable: $($_.Exception.Message))"; continue }
         if ($cv) { $bad += "$s ($($cv -join ', '))" }
     }
-    if ($bad) { throw "Repo children carry explicit ACEs outside SYSTEM/Administrators: $($bad -join '; ')" }
+    if ($bad) { throw "Repo children carry ACEs (explicit or inherited) outside SYSTEM/Administrators: $($bad -join '; ')" }
 }
 
 # ---- Data dir --------------------------------------------------------------------------------------------------------

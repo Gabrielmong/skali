@@ -54,7 +54,8 @@ about 62k entries, almost all in `node_modules`, so two recursive icacls passes 
 `node_modules` is removed first (`cmd rmdir /s /q`, which does not follow junctions; each path is checked to be inside the repo),
 the small source tree is locked, and `pnpm install` and the build run **inside the locked repo**: every file they create inherits
 the locked root ACL, and non-admins cannot write under the root, so no further recursive pass or link walk is needed (the
-installer only samples the ACLs of the root and some children, including `node_modules`). pnpm's default would hard-link
+installer only samples the ACLs of the root and some children, including `node_modules`, and rejects any ACE on them other than
+SYSTEM/Administrators, inherited or not). `node_modules` is created after the link walk, under the locked root. pnpm's default would hard-link
 `node_modules` files from its global store, and NTFS keeps one ACL per file shared by every link, which would leave the store's
 links writable by the installing user and let the lock rewrite other projects' ACLs. With `copy`, install writes private
 files that carry no ACL of their source (checked), and the installer fails if any hard-linked file remains. The cost: **every
@@ -96,7 +97,9 @@ git pull
 .\scripts\install-service.ps1
 ```
 
-The service is stopped for the build and restarted; running games are untouched.
+The service is stopped for the build and restarted; running games are untouched. `node_modules` is deleted before the install, so
+if an update fails midway there is no old build to fall back to (do not `nssm start Skali`): Skali stays stopped, games keep
+running; fix the error and re-run `install-service.ps1` from an elevated shell, which reinstalls dependencies and rebuilds.
 
 ## Uninstall
 

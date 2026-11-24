@@ -146,7 +146,7 @@ try {
     if (-not $DryRun) { Assert-DataDirAcl $dataDir }
 } catch {
     Write-Warning "Install failed: $($_.Exception.Message)"
-    if ($before) { Write-Warning "$serviceName was stopped for the update (running games are unaffected). Fix the problem and re-run; to start the old build: nssm start $serviceName" }
+    if ($before) { Write-Warning "Skali is stopped (games keep running). Fix the error above, then re-run install-service.ps1 from an elevated shell; it reinstalls dependencies and rebuilds." }
     else { Write-Warning "No $serviceName service was installed yet. Fix the problem above and re-run this script." }
     throw
 }
