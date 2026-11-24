@@ -14,5 +14,6 @@ describe("config", () => {
     const c = loadConfig({ SKALI_DATA_DIR: "D:\\x", SKALI_PORT: "5000", SKALI_RUN_AS_CURRENT_USER: "1", SKALI_INITIAL_ALLOWLIST: "10.0.0.5, 10.0.0.0/24" });
     expect([c.dataDir, c.port, c.runAsCurrentUser, c.initialAllowlist]).toEqual(["D:\\x", 5000, true, ["10.0.0.5", "10.0.0.0/24"]]);
     expect(dataPaths("D:\\x").logs).toBe("D:\\x\\logs");
+    expect(dataPaths("D:\\x").serviceLog).toBe("D:\\x\\service.log");
   });
 });

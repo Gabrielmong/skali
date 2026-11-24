@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "pretest": "pnpm --filter @skali/shared build",
     "test": "pnpm -r test",
     "build": "pnpm --filter @skali/shared build && pnpm --filter @skali/server build && pnpm --filter @skali/web build && pnpm build:helper",
     "build:helper": "dotnet publish tools/SkaliHelper -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o tools/SkaliHelper/publish",

@@ -27,7 +27,7 @@ interface Row {
   pid: number | null; pid_start_time: string | null; current_run_id: string | null; created_at: string;
 }
 
-const NAME_RE = /^[A-Za-z0-9 _.-]{1,40}$/;
+export const NAME_RE = /^[A-Za-z0-9 _.-]{1,40}$/;
 const NAME_USED = "Name already used";
 const NAME_INVALID = "Name may only contain letters, numbers, spaces, _ . - (1-40 characters)";
 

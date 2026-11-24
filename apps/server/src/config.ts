@@ -33,6 +33,6 @@ export function dataPaths(dataDir: string): { db: string; secretKey: string; log
     db: j(dataDir, "skali.db"),
     secretKey: j(dataDir, "secret.key"),
     logs: j(dataDir, "logs"),
-    serviceLog: j(dataDir, "logs", "service.log"),
+    serviceLog: j(dataDir, "service.log"),
   };
 }

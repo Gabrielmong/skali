@@ -3,6 +3,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BadRequestError } from "../../src/errors.js";
 import { palworld } from "../../src/games/palworld.js";
+import type { ServerRecord } from "../../src/servers/repo.js";
 import { parsePalworldIni } from "../../src/config-formats/palworld-options.js";
 import { startFakePalworld, type FakePalworld } from "../fakes/palworld-rest-server.js";
 import { rec, tmpFolder, touch } from "./helpers.js";
@@ -83,7 +84,7 @@ describe("palworld adapter", () => {
     it("probe and players", async () => {
       fake = await startFakePalworld("pw");
       const s = rec("palworld", "C:\\p", { restPort: fake.port }, { adminPassword: "pw" });
-      const probe = (palworld.ready as { kind: "probe"; probe: (s: typeof s) => Promise<boolean> }).probe;
+      const probe = (palworld.ready as { kind: "probe"; probe: (r: ServerRecord) => Promise<boolean> }).probe;
       expect(await probe(s)).toBe(true);
       expect(await palworld.players(s)).toEqual({ online: 2, max: 16 });
       const bad = rec("palworld", "C:\\p", { restPort: fake.port }, { adminPassword: "wrong" });
