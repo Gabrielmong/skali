@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "pretest": "node scripts/run-pnpm.mjs --filter @skali/shared build",
-    "test": "node scripts/run-pnpm.mjs -r test",
+    "test": "node scripts/run-pnpm.mjs -r --workspace-concurrency=1 test",
     "typecheck": "node scripts/run-pnpm.mjs --filter @skali/shared build && node scripts/run-pnpm.mjs --filter @skali/server typecheck && node scripts/run-pnpm.mjs --filter @skali/web typecheck && node scripts/run-pnpm.mjs --filter @skali/deployer typecheck",
     "build": "node scripts/run-pnpm.mjs --filter @skali/shared build && node scripts/run-pnpm.mjs --filter @skali/server build && node scripts/run-pnpm.mjs --filter @skali/web build && node scripts/run-pnpm.mjs build:helper",
     "build:deployer": "node scripts/run-pnpm.mjs --filter @skali/deployer build",

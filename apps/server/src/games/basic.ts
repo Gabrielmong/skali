@@ -45,6 +45,9 @@ export const basic: GameAdapter = {
   configSources: [],
   ready: { kind: "none" },
   defaultStopTimeoutSec: 60,
+  steamAppId: null,
+  installDefaults: () => ({}),
+  saveLocations: () => [],
   async inspectFolder(folder) {
     let names: string[];
     try {
@@ -57,7 +60,7 @@ export const basic: GameAdapter = {
     const exe =
       preferred ??
       [...names].sort((a, b) => fs.statSync(path.join(folder, b)).size - fs.statSync(path.join(folder, a)).size)[0]!;
-    return { ok: true, exe, launch: { exe }, notes: preferred ? [] : ["Picked the largest .exe; check it is the server"] };
+    return { ok: true, exe, launch: { ...basic.installDefaults(), exe }, notes: preferred ? [] : ["Picked the largest .exe; check it is the server"] };
   },
   validateLaunch(_name, launch) {
     const errors: string[] = [];

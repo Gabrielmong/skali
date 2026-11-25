@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, parse } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -98,6 +98,19 @@ describe("Adopter.adopt", () => {
     const file = join(root, "afile"); writeFileSync(file, "x");
     await expect(a.adopt(vhReq(file))).rejects.toBeInstanceOf(BadRequestError);
     await expect(a.adopt(vhReq(valheimFolder() + '"'))).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("refuses a junction folder (or one under a junction) before any grant", async () => {
+    const real = valheimFolder("real");
+    const link = join(root, "link");
+    symlinkSync(real, link, "junction");
+    await expect(adopter().adopt(vhReq(link))).rejects.toThrow(/is a link \(junction or symlink\)/);
+    const parentLink = join(root, "parent-link");
+    symlinkSync(root, parentLink, "junction");
+    await expect(adopter().adopt(vhReq(join(parentLink, "real")))).rejects.toThrow(/is a link \(junction or symlink\)/);
+    await expect(adopter().inspect("valheim", link)).rejects.toThrow(/is a link/);
+    expect(aclCalls).toEqual([]);
+    expect(repo.list()).toEqual([]);
   });
 
   it("rejects a folder that fails inspection", async () => {

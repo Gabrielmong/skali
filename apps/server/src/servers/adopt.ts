@@ -8,6 +8,7 @@ import { ensureFirewallRules, removeFirewallRules } from "../system/firewall.js"
 import type { ServerRecord, ServerRepo } from "./repo.js";
 import { assertNoReparsePoints } from "../util/files.js";
 import { Mutex } from "../util/mutex.js";
+import { assertAllowedFolder, assertNotLinked, defaultProtected, norm, type ProtectedPaths } from "./folders.js";
 import { findValheimWorlds } from "./valheim-worlds.js";
 
 export interface AdopterDeps {
@@ -22,48 +23,17 @@ export interface AdopterDeps {
   protectedPaths?: Partial<ProtectedPaths>;
 }
 
-export interface ProtectedPaths {
-  systemRoot: string;
-  programFiles: string[];
-  programData: string;
-  dataDir: string | null;
-  installDir: string | null;
-}
-
-function defaultProtected(): ProtectedPaths {
-  const e = process.env;
-  const programData = e.ProgramData || "C:\\ProgramData";
-  return {
-    systemRoot: e.SystemRoot || e.SYSTEMROOT || "C:\\Windows",
-    programFiles: [e.ProgramFiles, e["ProgramFiles(x86)"]].filter((x): x is string => !!x),
-    programData,
-    dataDir: path.join(programData, "Skali"),
-    installDir: null,
-  };
-}
-
-const norm = (p: string) => {
-  let r = path.resolve(p);
-  while (r.length > 3 && /[\\/]$/.test(r)) r = r.slice(0, -1);
-  return process.platform === "win32" ? r.toLowerCase() : r;
-};
-
-const isUnder = (p: string, base: string) => norm(p) === norm(base) || norm(p).startsWith(norm(base) + path.sep);
+export { defaultProtected, type ProtectedPaths };
 
 function checkFolder(folder: unknown, usersRoot: string, prot: ProtectedPaths): string {
-  if (typeof folder !== "string" || !path.isAbsolute(folder)) throw new BadRequestError("Folder must be an absolute path");
-  if (folder.includes('"')) throw new BadRequestError("Folder path may not contain a double quote");
-  let isDir = false;
-  try { isDir = fs.statSync(folder).isDirectory(); } catch { /* not found */ }
-  if (!isDir) throw new BadRequestError("Folder does not exist");
-  const r = path.resolve(folder);
-  const deny = (why: string) => new BadRequestError(`This folder can't be adopted: ${why}`);
-  if (path.parse(r).root === r || norm(r) === norm(path.parse(r).root)) throw deny("it is a drive or share root");
-  if (isUnder(r, prot.systemRoot)) throw deny("it is a Windows system folder");
-  for (const pf of [...prot.programFiles, prot.programData]) if (norm(r) === norm(pf)) throw deny("it is a system folder");
-  if (prot.dataDir && isUnder(r, prot.dataDir)) throw deny("it holds Skáli's own data");
-  if (prot.installDir && isUnder(r, prot.installDir)) throw deny("it is the Skáli install folder");
-  if (norm(r) === norm(usersRoot) || norm(path.dirname(r)) === norm(usersRoot)) throw deny("it is a user profile folder");
+  if (typeof folder === "string" && path.isAbsolute(folder) && !folder.includes('"')) {
+    let isDir = false;
+    try { isDir = fs.statSync(folder).isDirectory(); } catch { /* not found */ }
+    if (!isDir) throw new BadRequestError("Folder does not exist");
+  }
+  const r = assertAllowedFolder(folder, usersRoot, prot, "adopted");
+  // The games user is granted Modify here (icacls /L): a link folder would redirect that grant, so refuse it.
+  assertNotLinked(r);
   return r;
 }
 
@@ -114,7 +84,10 @@ export class Adopter {
       }
       if (req.game === "minecraft" && req.acceptEula === true) writeEula(folder, undo);
       created = repo.create({ name: req.name, game: req.game, folder, launch, stopTimeoutSec: adapter.defaultStopTimeoutSec });
-      if (this.deps.gamesUser) await (this.deps.acl ?? grantModify)(folder, this.deps.gamesUser);
+      if (this.deps.gamesUser) {
+        assertNotLinked(folder);
+        await (this.deps.acl ?? grantModify)(folder, this.deps.gamesUser);
+      }
       await (this.deps.firewall ?? ensureFirewallRules)(created.name, adapter.ports(created));
       return created;
     } catch (e) {
@@ -130,14 +103,23 @@ export class Adopter {
   /**
    * Removes the server's firewall rules and record. Refused while it runs, or while a pid is still tracked (a stop
    * that couldn't confirm the process gone). `state` may be a getter so the check is repeated after the (slow)
-   * firewall step; if something started meanwhile, the rules are restored and the removal is refused.
+   * firewall step; if something started meanwhile, the rules are restored and the removal is refused. Also refused
+   * while an install or update job runs. `beforeDelete` runs after the last check, before the record is deleted.
+   * Returns the record as it was removed.
    */
-  async remove(id: string, state: RuntimeState | (() => RuntimeState)): Promise<void> {
+  async remove(
+    id: string,
+    state: RuntimeState | (() => RuntimeState),
+    opts: { beforeDelete?: (rec: ServerRecord) => Promise<void> } = {},
+  ): Promise<ServerRecord> {
     const read = typeof state === "function" ? state : () => state;
     const check = (): ServerRecord => {
       const s = read();
       if (s.status !== "stopped" && s.status !== "crashed") throw new ConflictError("Stop the server before removing it");
       const rec = this.deps.repo.get(id);
+      if (rec.job?.state === "running") {
+        throw new ConflictError(rec.job.kind === "install" ? "Wait for the install to finish" : "Wait for the update to finish");
+      }
       if (rec.pid !== null) throw new ConflictError(s.detail ?? "The previous process may still be running; stop it first");
       return rec;
     };
@@ -155,7 +137,10 @@ export class Adopter {
       }
       throw e;
     }
+    // Runs while the record still exists (so its folder still counts as taken); must not throw.
+    await opts.beforeDelete?.(cur);
     this.deps.repo.delete(cur.id);
+    return cur;
   }
 
   /** Copies a world found by findValheimWorlds (matched by name or fwlPath) into the server folder; never overwrites. */

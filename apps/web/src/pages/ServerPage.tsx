@@ -2,10 +2,11 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { Alert, Box, Button, IconButton, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material'
 import type { GameInfo } from '@skali/shared'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { getGames } from '../api.ts'
 import { Console } from '../components/Console.tsx'
+import { JobPanel } from '../components/JobPanel.tsx'
 import { OverviewTab } from '../components/OverviewTab.tsx'
 import { ActionButtons, formatUptime, useNow, useServerActions } from '../components/ServerActions.tsx'
 import { SettingsTab } from '../components/settings/SettingsTab.tsx'
@@ -23,6 +24,14 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
   const live = server.status === 'running' || server.status === 'starting'
   const now = useNow(live && !!server.startedAt)
 
+  // A job writes to its own console run: show it when one begins (or when the page opens mid-job).
+  const jobRunId = server.job?.runId
+  const dirtyRef = useRef(dirty)
+  dirtyRef.current = dirty
+  useEffect(() => {
+    if (jobRunId && !dirtyRef.current) setTab('console')
+  }, [jobRunId])
+
   return (
     <Stack spacing={2}>
       <Box>
@@ -34,7 +43,7 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
         <Typography variant="h5" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {server.name}
         </Typography>
-        <StatusChip status={server.status} />
+        <StatusChip status={server.status} job={server.job} setupPending={server.setupPending} />
         {server.restartPending && <RestartPendingChip />}
         {live && server.startedAt && (
           <Typography variant="body2" color="text.secondary">
@@ -71,6 +80,8 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
           {server.detail}
         </Alert>
       )}
+
+      {server.job && <JobPanel server={server} />}
 
       <Tabs
         value={tab}

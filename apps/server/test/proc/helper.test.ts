@@ -7,7 +7,7 @@ import { ensurePublished, fakeGamePath, helperExePath } from "../support/fake-ga
 
 const TEST_TIMEOUT = 20_000;
 
-describe.skipIf(process.platform !== "win32")("SkaliHelper", () => {
+describe.skipIf(process.platform !== "win32")("SkaliHelper", { timeout: 30_000 }, () => {
   let helper: Helper;
   let tmpDir: string;
   let fileCounter = 0;

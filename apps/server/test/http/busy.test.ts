@@ -21,12 +21,12 @@ function mk(name: string) {
     launch: { port: 2456, world: "W", public: true, crossplay: false, extraArgs: "", password: "secret1" },
   });
 }
-function app() {
+function app(jobReasons?: () => string[]) {
   const supervisor = {
     state: vi.fn((id: string) => states.get(id) ?? { status: "stopped", crashPaused: false }),
   } as unknown as SupervisorApi;
   return createApp({
-    repo, configSources: new ConfigSourcesRepo(db), configHistory: new ConfigHistory(path.join(root, "config-history")), supervisor, adopter: {} as never, settings, logsDir: path.join(root, "logs"), webDist: root,
+    repo, configSources: new ConfigSourcesRepo(db), configHistory: new ConfigHistory(path.join(root, "config-history")), supervisor, adopter: {} as never, settings, logsDir: path.join(root, "logs"), webDist: root, jobReasons,
     remoteAddress: () => remote, hostname: "SERVER-PC", log: () => undefined,
   });
 }
@@ -45,6 +45,16 @@ afterEach(() => {
 });
 
 describe("GET /api/deploys/busy", () => {
+  it("includes job reasons", async () => {
+    const s = mk("Valheim");
+    states.set(s.id, { status: "stopping", crashPaused: false });
+    const r = await request(app(() => ["Palworld is installing"])).get("/api/deploys/busy").set("Host", "127.0.0.1:4200");
+    expect(r.body).toEqual({ busy: true, reasons: ["Valheim is stopping", "Palworld is installing"] });
+  });
+  it("is busy for a job alone", async () => {
+    const r = await request(app(() => ["X is updating"])).get("/api/deploys/busy").set("Host", "127.0.0.1:4200");
+    expect(r.body).toEqual({ busy: true, reasons: ["X is updating"] });
+  });
   it("reports a stopping server", async () => {
     const s = mk("Valheim");
     states.set(s.id, { status: "stopping", crashPaused: false });

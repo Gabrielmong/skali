@@ -1,0 +1,11 @@
+Steam Console Client (c) Valve Corporation - version 1794537082
+-- type 'quit' to exit --
+Loading Steam API...OK
+
+Connecting anonymously to Steam Public...OK
+Waiting for client config...OK
+Waiting for user info...OK
+ Update state (0x61) downloading, progress: 45.12 (123456 / 273600)
+Error! App '896660' state is 0x202 after update job.
+ERROR! Failed to install app '896660' (Disk write failure)
+Unloading Steam API...OK

@@ -5,6 +5,7 @@ import { AppBar, Box, Button, Container, IconButton, Toolbar, Tooltip, Typograph
 import { Link, Route, Routes, useNavigate } from 'react-router'
 import { useServers } from './live.tsx'
 import { AddServerDialog } from './components/AddServerDialog.tsx'
+import { NewServerPage } from './pages/NewServerPage.tsx'
 import { DeploysPage } from './pages/DeploysPage.tsx'
 import { ServerPage } from './pages/ServerPage.tsx'
 import { ServersPage } from './pages/ServersPage.tsx'
@@ -39,8 +40,8 @@ export function App() {
             />
           </Tooltip>
           <Box sx={{ flexGrow: 1 }} />
-          <Button component={Link} to="/add" startIcon={<AddIcon />}>
-            Add existing server
+          <Button component={Link} to="/new" startIcon={<AddIcon />}>
+            New server
           </Button>
           <Button component={Link} to="/deploys">
             Deploys
@@ -56,6 +57,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<ServersPage />} />
           <Route path="/servers/:id" element={<ServerPage />} />
+          <Route path="/new" element={<NewServerPage />} />
           <Route path="/add" element={<AddRoute />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/deploys" element={<DeploysPage />} />

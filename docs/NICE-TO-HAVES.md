@@ -11,17 +11,20 @@ Ideas that are agreed or parked but not built yet. The approved designs live in 
 - **Settings editor** (Plan 2): implemented in the working tree, awaiting your commit and the "Settings editor (server PC)" acceptance items in
   `RUNNING.md`. Every config file per server, a form and a raw view, config history with restore, locked keys, and
   "restart pending". Its limits are listed in `RUNNING.md` under "Settings editor: known limits".
+- **Setup and maintenance, Plan 3a**: implemented in the working tree, awaiting your commit and the "New server and Update (server PC)" acceptance items in
+  `RUNNING.md`. A **New server** gallery, SteamCMD, managed Java and Minecraft downloads, install and update jobs with
+  live progress, port-conflict checks, a pre-update backup, Retry, Finish setup, remove with the folder, and auto-deploy
+  waiting during an install (a new busy reason). Palworld's `save()` timeout is fixed.
+  - The gallery uses a **built-in list**, because Steam's app-list API is retired. Regenerating it is
+    `tools/catalog/generate.mjs`.
+  - Follow-up: a **server-side Windows-build recheck for basic installs**. The setup page warns when a looked-up app
+    has no Windows build and disables Set up, but the install API itself doesn't check again.
 
 ## Planned next
 
-### Plan 3: Setup and maintenance
-- A gallery of games with search over Steam's app list.
-- SteamCMD, Temurin (Java) and Minecraft server downloads, done for you.
-- A setup dialog with port-conflict checks and live progress, plus Steam login when a game needs it.
-- An **Update** button per server, which takes a world backup first.
-- World backup and restore, with retention.
-- Auto-deploy waits while a SteamCMD install or update is running (a new busy reason).
-- Palworld's `save()` timeout of 5 s must be fixed before Palworld goes live.
+### Plan 3b: Backups and Steam login
+- A backups tab with world backup and restore, and retention.
+- Steam login, for games that need an account to download.
 
 ## Nice-to-haves (parked, no plan yet)
 

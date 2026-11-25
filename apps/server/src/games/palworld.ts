@@ -65,12 +65,15 @@ export const palworld: GameAdapter = {
     },
   },
   defaultStopTimeoutSec: 120,
+  steamAppId: 2394010,
+  installDefaults: () => ({ port: 8211, players: 32, perfFlags: true, restPort: 8212, extraArgs: "" }),
+  saveLocations: (s) => [path.join(s.folder, "Pal", "Saved", "SaveGames")],
   async inspectFolder(folder) {
     if (!fs.existsSync(path.join(folder, REL_EXE))) return { ok: false, reason: "PalServer-Win64-Shipping-Cmd.exe not found in this folder" };
     return {
       ok: true,
       exe: REL_EXE,
-      launch: { port: 8211, players: 32, perfFlags: true, restPort: 8212, extraArgs: "" },
+      launch: palworld.installDefaults(),
       notes: [],
     };
   },

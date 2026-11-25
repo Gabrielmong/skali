@@ -1,0 +1,99 @@
+Steam Console Client (c) Valve Corporation - version 1794537082
+-- type 'quit' to exit --
+Loading Steam API...OK
+
+Connecting anonymously to Steam Public...OK
+Waiting for client config...OK
+Waiting for user info...OK
+AppID : 1628350, change number : 40804639/40804639, last change : Tue Nov 24 20:27:43 2026 
+"1628350"
+{
+	"common"
+	{
+		"name"		"Steam Linux Runtime 3.0 (sniper)"
+		"section_type"		"ownersonly"
+		"type"		"Tool"
+		"oslist"		"linux"
+		"osarch"		""
+		"osextended"		""
+		"ReleaseState"		"released"
+		"icon"		"28e69f0757c1da202c47f40bdab7974820c7b1a5"
+		"freetodownload"		"1"
+		"header_image"
+		{
+			"english"		"header.jpg"
+		}
+		"store_asset_mtime"		"1709312832"
+		"associations"
+		{
+		}
+		"gameid"		"1628350"
+	}
+	"config"
+	{
+		"installdir"		"SteamLinuxRuntime_sniper"
+	}
+	"depots"
+	{
+		"1628351"
+		{
+			"config"
+			{
+				"oslist"		"linux"
+				"osarch"		"64"
+				"language"		""
+			}
+			"manifests"
+			{
+				"public"
+				{
+					"gid"		"6238007303758425057"
+					"size"		"810335462"
+					"download"		"244182992"
+				}
+				"client_beta"
+				{
+					"gid"		"2942132435763401398"
+					"size"		"810656442"
+					"download"		"244311632"
+				}
+				"previous_release"
+				{
+					"gid"		"6888723449204004246"
+					"size"		"810302127"
+					"download"		"244030176"
+				}
+			}
+		}
+		"branches"
+		{
+			"public"
+			{
+				"buildid"		"26116003"
+				"timeupdated"		"1792675813"
+				"timebuildupdated"		"1792612273"
+			}
+			"client_beta"
+			{
+				"buildid"		"26572274"
+				"description"		"use with Steam beta client"
+				"timeupdated"		"1794333848"
+				"timebuildupdated"		"1794332932"
+			}
+			"previous_release"
+			{
+				"buildid"		"25607578"
+				"description"		"previous release"
+				"timeupdated"		"1791897210"
+				"timebuildupdated"		"1790698923"
+			}
+		}
+		"privatebranches"		"1"
+	}
+}
+Unloading Steam API...OK
+Redirecting stderr to 'C:\SkaliData\tools\steamcmd\logs\stderr.txt'
+Logging directory: 'C:\SkaliData\tools\steamcmd/logs'
+[  0%] Checking for available updates...
+[----] Verifying installation...
+CWorkThreadPool::~CWorkThreadPool: work processing queue not empty: 2 items discarded.

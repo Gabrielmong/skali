@@ -2,7 +2,7 @@ import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
 import os from "node:os";
 import path from "node:path";
-import type { GameId, RuntimeState, WsServerMessage } from "@skali/shared";
+import type { GameId, JobView, RuntimeState, WsServerMessage } from "@skali/shared";
 import { WebSocket, WebSocketServer } from "ws";
 import { getAdapter } from "../games/registry.js";
 import type { GameAdapter } from "../games/types.js";
@@ -20,6 +20,8 @@ export interface WsHubDeps {
   subscribe: (cb: (e: SupervisorEvent) => void) => void;
   state: (id: string) => RuntimeState;
   settings: SettingsStore;
+  /** The live job view for a server (null when none). */
+  job?: (id: string) => JobView | null;
   repo: ServerRepo;
   adapter?: (id: GameId) => GameAdapter;
   logsDir: string;
@@ -102,7 +104,7 @@ export function attachWsHub(server: Server, deps: WsHubDeps): WsHub {
   const statusMsg = (id: string): WsServerMessage | null => {
     try {
       const rec = repo.get(id);
-      return { type: "status", server: toView(rec, deps.state(id), adapterOf(rec.game), settings.get()) };
+      return { type: "status", server: toView(rec, deps.state(id), adapterOf(rec.game), settings.get(), deps.job?.(id) ?? null) };
     } catch {
       return null; // deleted meanwhile
     }
@@ -165,7 +167,9 @@ export function attachWsHub(server: Server, deps: WsHubDeps): WsHub {
     if (!c.subs.has(id) && c.subs.size >= MAX_SUBS) return;
     const sub: LogSub = { ready: false, buffer: [] };
     c.subs.set(id, sub);
-    let runId: string | null = deps.state(id).runId ?? currentRunId ?? null;
+    // A running install/update logs to its own run, so show that. A failed job's log only stands in when the game has no run.
+    const job = deps.job?.(id) ?? null;
+    let runId: string | null = (job?.state === "running" ? job.runId : null) ?? deps.state(id).runId ?? currentRunId ?? job?.runId ?? null;
     if (!runId) runId = listRuns(logsDir, id)[0]?.runId ?? null;
     let lines: string[] = [];
     if (runId) {

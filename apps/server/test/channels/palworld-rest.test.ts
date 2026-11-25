@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createPalworldRest, PalworldRestError } from "../../src/channels/palworld-rest.js";
+import { createPalworldRest, DEFAULT_SAVE_TIMEOUT_MS, PalworldRestError } from "../../src/channels/palworld-rest.js";
 import { startFakePalworld, type FakePalworld } from "../fakes/palworld-rest-server.js";
 
 describe("Palworld REST", () => {
@@ -57,5 +57,13 @@ describe("Palworld REST", () => {
     const api = createPalworldRest({ port: fake.port, password: "pw", timeoutMs: 100, saveTimeoutMs: 2000 });
     await expect(api.save()).resolves.toBeUndefined();
     await expect(api.announce("x")).rejects.toThrow();
+  });
+  it("save aborts after the configured timeout; default is 60 s", async () => {
+    expect(DEFAULT_SAVE_TIMEOUT_MS).toBe(60_000);
+    fake = await startFakePalworld("pw", { delayMs: { "/v1/api/save": 2000 } });
+    const api = createPalworldRest({ port: fake.port, password: "pw", saveTimeoutMs: 150 });
+    const t0 = Date.now();
+    await expect(api.save()).rejects.toThrow();
+    expect(Date.now() - t0).toBeLessThan(1500);
   });
 });

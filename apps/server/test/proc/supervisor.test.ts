@@ -65,6 +65,9 @@ function makeAdapter(over: Partial<GameAdapter> = {}): GameAdapter {
     configSources: [],
     ready: { kind: "none" },
     defaultStopTimeoutSec: 30,
+    steamAppId: null,
+    installDefaults: () => ({}),
+    saveLocations: () => [],
     inspectFolder: async () => ({ ok: false, reason: "n/a" }),
     validateLaunch: () => [],
     ports: () => [],
@@ -147,13 +150,14 @@ afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-function mkSup(over: { gamesUser?: { name: string; password: string } | null } = {}): Supervisor {
+function mkSup(over: { gamesUser?: { name: string; password: string } | null; startGuard?: (id: string) => string | null } = {}): Supervisor {
   sup = new Supervisor({
     repo,
     helper: h.helper as unknown as Helper,
     adapter: () => adapter,
     logsDir: path.join(dir, "logs"),
     gamesUser: over.gamesUser ?? null,
+    ...(over.startGuard ? { startGuard: over.startGuard } : {}),
     emit: (e) => emitImpl(e),
     cpuCount: 2,
     createTailer: (file, opts) => {
@@ -185,6 +189,42 @@ const statuses = (id: string) =>
   events.filter((e): e is Extract<SupervisorEvent, { type: "status" }> => e.type === "status" && e.serverId === id).map((e) => e.state.status);
 
 // ---------- tests ----------
+
+describe("Supervisor: start guard", () => {
+  it.each(["Installing…", "Updating…", "Install failed — retry or remove it", "Finish setup first"])("refuses start with %s", async (reason) => {
+    const s = mkServer();
+    const sv = mkSup({ startGuard: () => reason });
+    await expect(sv.start(s.id)).rejects.toThrow(new ConflictError(reason));
+    expect(h.helper.launch).not.toHaveBeenCalled();
+  });
+
+  it("skipGuard starts past the guard (a job starting its own server)", async () => {
+    const s = mkServer();
+    const sv = mkSup({ startGuard: () => "Updating…" });
+    await sv.start(s.id, { skipGuard: true });
+    expect(sv.state(s.id).status).toBe("running");
+  });
+
+  it("restart is refused before the running server is stopped", async () => {
+    const s = mkServer();
+    let guard: string | null = null;
+    const sv = mkSup({ startGuard: () => guard });
+    await sv.start(s.id);
+    guard = "Updating…";
+    await expect(sv.restart(s.id)).rejects.toThrow(new ConflictError("Updating…"));
+    expect(sv.state(s.id).status).toBe("running");
+    expect(h.helper.launch).toHaveBeenCalledTimes(1);
+  });
+
+  it("boot skips a guarded auto-start server without marking it crashed", async () => {
+    const s = mkServer({ desired: "running", autoStart: true });
+    const sv = mkSup({ startGuard: () => "Installing…" });
+    await sv.boot();
+    expect(h.helper.launch).not.toHaveBeenCalled();
+    expect(sv.state(s.id).status).toBe("stopped");
+    expect(repo.get(s.id).desired).toBe("running");
+  });
+});
 
 describe("Supervisor: start", () => {
   it("serializes start: concurrent double start launches once and the second rejects with Conflict", async () => {
@@ -437,14 +477,14 @@ describe("Supervisor: stop", () => {
     expect(sv.state(s.id).status).toBe("stopped");
   });
 
-  it("adapter.stop that never settles times out after min(30 s, stopTimeoutSec) and falls back to ctrlC", async () => {
+  it("adapter.stop that never settles times out after min(90 s, stopTimeoutSec) and falls back to ctrlC", async () => {
     adapter = makeAdapter({ stop: vi.fn(() => new Promise<void>(() => {})) });
     const s = mkServer({ stopTimeoutSec: 120 });
     const sv = mkSup();
     await sv.start(s.id);
     const { pid, pidStartTime } = repo.get(s.id);
     const p = sv.stop(s.id);
-    await vi.advanceTimersByTimeAsync(29_999);
+    await vi.advanceTimersByTimeAsync(89_999);
     expect(h.helper.ctrlC).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(2_000);
     expect(h.helper.ctrlC).toHaveBeenCalledWith(pid, pidStartTime);
@@ -452,6 +492,27 @@ describe("Supervisor: stop", () => {
     await p;
     expect(sv.state(s.id).status).toBe("stopped");
     expect(h.helper.kill).not.toHaveBeenCalled();
+  });
+
+  it("adapter.stop taking 60 s (> old 30 s cap, < 90 s) is not interrupted when stopTimeoutSec is 120", async () => {
+    adapter = makeAdapter({
+      stop: vi.fn(async (_s: ServerRecord, ctx: { ctrlC(): Promise<void> }) => {
+        await new Promise<void>((r) => setTimeout(r, 60_000));
+        await ctx.ctrlC();
+      }),
+    });
+    const s = mkServer({ stopTimeoutSec: 120 });
+    const sv = mkSup();
+    await sv.start(s.id);
+    const p = sv.stop(s.id);
+    await vi.advanceTimersByTimeAsync(59_000);
+    expect(h.helper.ctrlC).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(h.helper.ctrlC).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await p;
+    expect(sv.state(s.id).status).toBe("stopped");
+    expect(h.helper.ctrlC).toHaveBeenCalledTimes(1);
   });
 
   it("stop with unverifiable identity: graceful attempt, then kill with startTime; kill failure ends stopped with detail and a log line", async () => {

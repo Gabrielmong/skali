@@ -28,6 +28,43 @@ beforeEach(() => {
   vi.mocked(api.restartServer).mockResolvedValue(makeServer())
 })
 
+const job = (kind: 'install' | 'update', state: 'running' | 'failed') =>
+  ({ kind, state, steps: [], progress: null, runId: 'r1' }) as const
+
+describe('ServerCard job and setup states', () => {
+  it.each([
+    ['install', 'running', 'Installing…'],
+    ['update', 'running', 'Updating…'],
+    ['install', 'failed', 'Install failed'],
+    ['update', 'failed', 'Update failed'],
+  ] as const)('chip for a %s job that is %s reads %s, overriding the status', (kind, state, label) => {
+    renderCard({ status: 'running', job: job(kind, state) })
+    expect(screen.getByText(label)).toBeInTheDocument()
+    expect(screen.queryByText('Running')).toBeNull()
+  })
+
+  it('chip says Finish setup when setupPending', () => {
+    renderCard({ setupPending: true })
+    expect(screen.getByText('Finish setup')).toBeInTheDocument()
+  })
+
+  it.each([
+    [{ job: job('install', 'running') }, 'Installing…'],
+    [{ job: job('update', 'running') }, 'Updating…'],
+    [{ job: job('install', 'failed') }, 'Install failed — retry or remove it'],
+    [{ setupPending: true }, 'Finish setup first'],
+  ])('Start is disabled with its reason (%#)', (over, reason) => {
+    renderCard(over)
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled()
+    expect(screen.getByTitle(reason)).toBeInTheDocument()
+  })
+
+  it('a failed update does not block Start', () => {
+    renderCard({ job: job('update', 'failed') })
+    expect(screen.getByRole('button', { name: 'Start' })).toBeEnabled()
+  })
+})
+
 describe('ServerCard', () => {
   it('shows a Restart pending chip only when restartPending', () => {
     const { unmount } = renderCard({ status: 'running', restartPending: false })

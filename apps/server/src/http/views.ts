@@ -1,5 +1,5 @@
-import { MASKED_SECRET, type LaunchValues, type PortSpec, type RuntimeState, type ServerView } from "@skali/shared";
-import type { GameAdapter } from "../games/types.js";
+import { MASKED_SECRET, type LaunchValues, type JobView, type PortSpec, type RuntimeState, type ServerView } from "@skali/shared";
+import { effectiveAppId, type GameAdapter } from "../games/types.js";
 import type { ServerRecord } from "../servers/repo.js";
 import type { AppSettings } from "../settings.js";
 
@@ -25,7 +25,7 @@ export function isRestartPending(rec: ServerRecord, state: RuntimeState): boolea
 }
 
 /** The API's view of a server. Built field by field so `secrets` (or any future private field) never leaks. */
-export function toView(rec: ServerRecord, state: RuntimeState, adapter: GameAdapter, settings: AppSettings): ServerView {
+export function toView(rec: ServerRecord, state: RuntimeState, adapter: GameAdapter, settings: AppSettings, job: JobView | null): ServerView {
   let ports: PortSpec[] = [];
   try {
     ports = adapter.ports(rec);
@@ -66,6 +66,10 @@ export function toView(rec: ServerRecord, state: RuntimeState, adapter: GameAdap
     ports,
     connectAddress: fwd ? `${settings.connectHost}:${fwd.port}` : settings.connectHost,
     hasCommands,
+    job,
+    setupPending: rec.setupPending,
+    createdFolder: rec.createdFolder,
+    steamAppId: effectiveAppId(rec, adapter),
     ...(adapter.info.commandHelp !== undefined ? { commandHelp: adapter.info.commandHelp } : {}),
   };
 }

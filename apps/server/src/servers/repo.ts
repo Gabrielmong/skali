@@ -1,8 +1,18 @@
 import { randomUUID } from "node:crypto";
-import type { GameId, LaunchValues } from "@skali/shared";
+import type { GameId, JobKind, JobStepView, LaunchValues } from "@skali/shared";
 import type { Db } from "../db.js";
 import { BadRequestError, NotFoundError } from "../errors.js";
 import { decryptSecret, encryptSecret } from "../secrets.js";
+
+/** A running/failed install or update job as persisted in servers.job (JSON, never holds secrets). */
+export interface PersistedJob {
+  kind: JobKind;
+  state: "running" | "failed";
+  steps: JobStepView[];
+  error?: string;
+  runId: string;
+  params: Record<string, unknown>;
+}
 
 export interface ServerRecord {
   id: string;
@@ -21,6 +31,10 @@ export interface ServerRecord {
   createdAt: string;
   /** ISO time of the last launch/config change; compared with the run start for restartPending. */
   configChangedAt: string | null;
+  steamAppId: number | null;
+  setupPending: boolean;
+  createdFolder: boolean;
+  job: PersistedJob | null;
 }
 
 interface Row {
@@ -28,11 +42,12 @@ interface Row {
   auto_restart: number; auto_start: number; stop_timeout_sec: number;
   pid: number | null; pid_start_time: string | null; current_run_id: string | null; created_at: string;
   config_changed_at: string | null;
+  steam_app_id: number | null; setup_pending: number; created_folder: number; job: string | null;
 }
 
 export const NAME_RE = /^[A-Za-z0-9 _.-]{1,40}$/;
-const NAME_USED = "Name already used";
-const NAME_INVALID = "Name may only contain letters, numbers, spaces, _ . - (1-40 characters)";
+export const NAME_USED = "Name already used";
+export const NAME_INVALID = "Name may only contain letters, numbers, spaces, _ . - (1-40 characters)";
 
 export class ServerRepo {
   constructor(private readonly db: Db, private readonly key: Buffer) {}
@@ -47,7 +62,7 @@ export class ServerRepo {
     return this.toRecord(row);
   }
 
-  create(input: Pick<ServerRecord, "name" | "game" | "folder" | "launch" | "stopTimeoutSec"> & { secrets?: Record<string, string> }): ServerRecord {
+  create(input: Pick<ServerRecord, "name" | "game" | "folder" | "launch" | "stopTimeoutSec"> & { secrets?: Record<string, string> } & Partial<Pick<ServerRecord, "steamAppId" | "setupPending" | "createdFolder" | "job">>): ServerRecord {
     this.checkName(input.name);
     const rec: ServerRecord = {
       id: randomUUID(),
@@ -65,15 +80,20 @@ export class ServerRepo {
       currentRunId: null,
       createdAt: new Date().toISOString(),
       configChangedAt: null,
+      steamAppId: input.steamAppId ?? null,
+      setupPending: input.setupPending ?? false,
+      createdFolder: input.createdFolder ?? false,
+      job: input.job ?? null,
     };
     try {
       this.db
         .prepare(
-          `INSERT INTO servers (id, name, game, folder, launch, secrets, desired, auto_restart, auto_start, stop_timeout_sec, pid, pid_start_time, current_run_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO servers (id, name, game, folder, launch, secrets, desired, auto_restart, auto_start, stop_timeout_sec, pid, pid_start_time, current_run_id, created_at, steam_app_id, setup_pending, created_folder, job)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(rec.id, rec.name, rec.game, rec.folder, JSON.stringify(rec.launch), this.seal(rec.secrets), rec.desired,
-          rec.autoRestart ? 1 : 0, rec.autoStart ? 1 : 0, rec.stopTimeoutSec, rec.pid, rec.pidStartTime, rec.currentRunId, rec.createdAt);
+          rec.autoRestart ? 1 : 0, rec.autoStart ? 1 : 0, rec.stopTimeoutSec, rec.pid, rec.pidStartTime, rec.currentRunId, rec.createdAt,
+          rec.steamAppId, rec.setupPending ? 1 : 0, rec.createdFolder ? 1 : 0, rec.job ? JSON.stringify(rec.job) : null);
     } catch (e) {
       throw this.mapConstraint(e);
     }
@@ -92,10 +112,12 @@ export class ServerRepo {
       this.db
         .prepare(
           `UPDATE servers SET name = ?, game = ?, folder = ?, launch = ?, secrets = ?, desired = ?, auto_restart = ?, auto_start = ?,
-             stop_timeout_sec = ?, pid = ?, pid_start_time = ?, current_run_id = ? WHERE id = ?`,
+             stop_timeout_sec = ?, pid = ?, pid_start_time = ?, current_run_id = ?,
+             steam_app_id = ?, setup_pending = ?, created_folder = ?, job = ? WHERE id = ?`,
         )
         .run(next.name, next.game, next.folder, JSON.stringify(next.launch), patch.secrets !== undefined ? this.seal(next.secrets) : row.secrets, next.desired,
-          next.autoRestart ? 1 : 0, next.autoStart ? 1 : 0, next.stopTimeoutSec, next.pid, next.pidStartTime, next.currentRunId, id);
+          next.autoRestart ? 1 : 0, next.autoStart ? 1 : 0, next.stopTimeoutSec, next.pid, next.pidStartTime, next.currentRunId,
+          next.steamAppId, next.setupPending ? 1 : 0, next.createdFolder ? 1 : 0, next.job ? JSON.stringify(next.job) : null, id);
     } catch (e) {
       throw this.mapConstraint(e);
     }
@@ -142,6 +164,10 @@ export class ServerRepo {
       currentRunId: r.current_run_id,
       createdAt: r.created_at,
       configChangedAt: r.config_changed_at,
+      steamAppId: r.steam_app_id,
+      setupPending: r.setup_pending === 1,
+      createdFolder: r.created_folder === 1,
+      job: r.job ? (JSON.parse(r.job) as PersistedJob) : null,
     };
   }
 }

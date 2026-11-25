@@ -4,6 +4,7 @@ import { MINECRAFT_EULA_NOTE } from "@skali/shared";
 import { BadRequestError } from "../errors.js";
 import { withRcon } from "../channels/rcon.js";
 import { parseProperties } from "../config-formats/properties.js";
+import { isUnder, norm } from "../servers/folders.js";
 import type { ServerRecord } from "../servers/repo.js";
 import { splitArgs } from "../util/args.js";
 import { generateSecret, num, readTextFile, str, writeIfChanged } from "../util/files.js";
@@ -41,6 +42,18 @@ export const minecraft: GameAdapter = {
   ],
   ready: { kind: "pattern", pattern: /Done \(\d/ },
   defaultStopTimeoutSec: 60,
+  steamAppId: null,
+  // No mcFlavour: an adopted server's flavour/version is unknown; the installer sets them from the install request.
+  installDefaults: () => ({ jar: "server.jar", javaPath: "java", memoryMb: 4096, jvmArgs: "", port: 25565, rconPort: 25575 }),
+  saveLocations(s) {
+    // server.properties is writable by the games user and the owner, and the backup runs as SYSTEM: keep only
+    // locations strictly inside the server folder (a level-name like ..\..\ would zip an arbitrary tree).
+    const level = parseProperties(readTextFile(path.join(s.folder, "server.properties")) ?? "").get("level-name")?.trim() || "world";
+    const folder = path.resolve(s.folder);
+    return [level, `${level}_nether`, `${level}_the_end`]
+      .map((n) => path.resolve(folder, n))
+      .filter((p) => isUnder(p, folder) && norm(p) !== norm(folder));
+  },
   async inspectFolder(folder) {
     let jars: string[];
     try {
@@ -60,7 +73,7 @@ export const minecraft: GameAdapter = {
     return {
       ok: true,
       exe: "java",
-      launch: { jar, javaPath: "java", memoryMb: 4096, jvmArgs: "", port: 25565, rconPort: 25575 },
+      launch: { ...minecraft.installDefaults(), jar },
       notes,
     };
   },

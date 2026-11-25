@@ -3,7 +3,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
-import type { RuntimeState, WsServerMessage } from "@skali/shared";
+import type { JobView, RuntimeState, WsServerMessage } from "@skali/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import { openDb, type Db } from "../../src/db.js";
@@ -18,6 +18,7 @@ let root: string, db: Db, repo: ServerRepo, settings: SettingsStore, logsDir: st
 let server: http.Server, hub: WsHub, port: number;
 let remote: string | undefined;
 let states: Map<string, RuntimeState>;
+let jobs: Map<string, JobView>;
 let listeners: ((e: SupervisorEvent) => void)[];
 let clients: WebSocket[];
 
@@ -38,6 +39,7 @@ async function start(tickMs = 100_000): Promise<void> {
     subscribe: (cb) => { listeners.push(cb); },
     state: (id) => states.get(id) ?? { status: "stopped", crashPaused: false },
     settings, repo, logsDir,
+    job: (id) => jobs.get(id) ?? null,
     remoteAddress: () => remote,
     hostname: "SERVER-PC",
     tickMs,
@@ -85,6 +87,7 @@ beforeEach(() => {
   logsDir = path.join(root, "logs");
   remote = "::ffff:192.168.0.150";
   states = new Map();
+  jobs = new Map();
   listeners = [];
   clients = [];
 });
@@ -222,6 +225,32 @@ describe("logs", () => {
     expect(l).toEqual({ type: "log", serverId: a.id, runId: run.runId, lines: ["mine"] });
     await sleep(50);
     expect(c.msgs.filter((m) => m.type === "log")).toHaveLength(1);
+  });
+  it("history prefers the running job's run over the game's run", async () => {
+    const a = mk("a");
+    const game = createRun(logsDir, a.id, new Date("2026-01-01T00:00:00Z"));
+    fs.writeFileSync(game.consolePath, "old game line\n");
+    const jobRun = createRun(logsDir, a.id, new Date("2026-01-02T00:00:00Z"));
+    fs.writeFileSync(jobRun.consolePath, "job line\n");
+    states.set(a.id, { status: "stopped", crashPaused: false, runId: game.runId });
+    jobs.set(a.id, { kind: "update", state: "running", steps: [], progress: null, runId: jobRun.runId });
+    await start();
+    const c = await connect();
+    send(c, { type: "subscribeLogs", serverId: a.id });
+    expect(await c.next((m) => m.type === "logHistory")).toEqual({ type: "logHistory", serverId: a.id, runId: jobRun.runId, lines: ["job line"] });
+  });
+  it("history ignores a failed job while the game has its own run", async () => {
+    const a = mk("a");
+    const game = createRun(logsDir, a.id, new Date("2026-01-01T00:00:00Z"));
+    fs.writeFileSync(game.consolePath, "game line\n");
+    const jobRun = createRun(logsDir, a.id, new Date("2026-01-02T00:00:00Z"));
+    fs.writeFileSync(jobRun.consolePath, "job line\n");
+    states.set(a.id, { status: "running", crashPaused: false, runId: game.runId });
+    jobs.set(a.id, { kind: "update", state: "failed", steps: [], progress: null, runId: jobRun.runId });
+    await start();
+    const c = await connect();
+    send(c, { type: "subscribeLogs", serverId: a.id });
+    expect(await c.next((m) => m.type === "logHistory")).toEqual({ type: "logHistory", serverId: a.id, runId: game.runId, lines: ["game line"] });
   });
   it("history falls back to the newest run; none → empty", async () => {
     const a = mk("a");

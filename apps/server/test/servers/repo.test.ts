@@ -18,6 +18,20 @@ const input = (name = "Pal One") => ({
   name, game: "palworld" as const, folder: "C:\\games\\pal", launch: { port: 8211, rcon: true }, stopTimeoutSec: 30,
 });
 
+describe("ServerRepo job fields", () => {
+  it("round-trips steamAppId, setupPending, createdFolder and job", () => {
+    const repo = new ServerRepo(openDb(dbPath), key);
+    const plain = repo.create(input("Plain"));
+    expect(repo.get(plain.id)).toMatchObject({ steamAppId: null, setupPending: false, createdFolder: false, job: null });
+    const c = repo.create({ ...input(), steamAppId: 896660, createdFolder: true });
+    const job = { kind: "install" as const, state: "failed" as const, steps: [{ id: "files", label: "Game files", state: "failed" as const }], error: "x", runId: "r", params: { a: 1 } };
+    repo.update(c.id, { setupPending: true, job });
+    expect(repo.get(c.id)).toMatchObject({ steamAppId: 896660, setupPending: true, createdFolder: true, job });
+    repo.update(c.id, { job: null });
+    expect(repo.get(c.id).job).toBeNull();
+  });
+});
+
 describe("ServerRepo", () => {
   it("create/get round-trips with defaults and decrypted secrets", () => {
     const repo = new ServerRepo(openDb(dbPath), key);

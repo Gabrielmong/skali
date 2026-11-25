@@ -1,6 +1,7 @@
 import { Alert, Box, Button, CircularProgress, Snackbar, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { getSettings, putSettings, type AppSettings } from '../api.ts'
+import type { ToolsStatus } from '@skali/shared'
+import { getSettings, getTools, putSettings, type AppSettings } from '../api.ts'
 import { AllowlistEditor } from '../components/AllowlistEditor.tsx'
 import { errorMessage } from '../components/ServerActions.tsx'
 
@@ -18,6 +19,8 @@ export function SettingsPage() {
   const [saved, setSaved] = useState<AppSettings | null>(null)
   const [allowlist, setAllowlist] = useState<string[]>([])
   const [connectHost, setConnectHost] = useState('')
+  const [gamesRoot, setGamesRoot] = useState('')
+  const [tools, setTools] = useState<ToolsStatus | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -31,8 +34,14 @@ export function SettingsPage() {
         setSaved(s)
         setAllowlist(s.allowlist)
         setConnectHost(s.connectHost)
+        setGamesRoot(s.gamesRoot)
       },
       (e: unknown) => alive && setLoadError(errorMessage(e)),
+    )
+    // Informational only: the page works without it.
+    getTools().then(
+      (t) => alive && setTools(t),
+      () => undefined,
     )
     return () => {
       alive = false
@@ -43,16 +52,21 @@ export function SettingsPage() {
   if (!saved) return <CircularProgress aria-label="Loading settings" />
 
   const hostError = connectHostError(connectHost)
-  const dirty = connectHost.trim() !== saved.connectHost || JSON.stringify(allowlist) !== JSON.stringify(saved.allowlist)
+  const rootError = gamesRoot.trim() === '' ? 'Enter a folder path' : null
+  const dirty =
+    connectHost.trim() !== saved.connectHost ||
+    gamesRoot.trim() !== saved.gamesRoot ||
+    JSON.stringify(allowlist) !== JSON.stringify(saved.allowlist)
 
   const save = async () => {
     setSaving(true)
     setSaveError(null)
     try {
-      const out = await putSettings({ allowlist, connectHost: connectHost.trim() })
+      const out = await putSettings({ allowlist, connectHost: connectHost.trim(), gamesRoot: gamesRoot.trim() })
       setSaved(out)
       setAllowlist(out.allowlist)
       setConnectHost(out.connectHost)
+      setGamesRoot(out.gamesRoot)
       setToast(true)
     } catch (e) {
       setSaveError(errorMessage(e))
@@ -82,9 +96,36 @@ export function SettingsPage() {
         fullWidth
       />
 
+      <TextField
+        label="Games folder"
+        value={gamesRoot}
+        onChange={(e) => setGamesRoot(e.target.value)}
+        error={rootError !== null}
+        helperText={rootError ?? 'New servers are installed in a folder here, for example D:\\GameServers'}
+        fullWidth
+      />
+
+      <Box>
+        <Typography variant="subtitle1">Tools</Typography>
+        {tools ? (
+          <>
+            <Typography variant="body2">
+              {tools.steamcmd ? 'SteamCMD: installed' : 'SteamCMD: not installed yet (downloaded on first install)'}
+            </Typography>
+            <Typography variant="body2">
+              {tools.java.length > 0 ? `Java: ${tools.java.join(', ')}` : 'Java: none yet'}
+            </Typography>
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            Checking…
+          </Typography>
+        )}
+      </Box>
+
       {saveError && <Alert severity="error">{saveError}</Alert>}
       <Box>
-        <Button variant="contained" disabled={!dirty || saving || hostError !== null} onClick={() => void save()}>
+        <Button variant="contained" disabled={!dirty || saving || hostError !== null || rootError !== null} onClick={() => void save()}>
           Save
         </Button>
       </Box>

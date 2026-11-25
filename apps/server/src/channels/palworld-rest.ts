@@ -8,6 +8,9 @@ export class PalworldRestError extends Error {
   }
 }
 
+/** Saving a big world can take a while; the stop path in the adapter tolerates a failed or timed-out save. */
+export const DEFAULT_SAVE_TIMEOUT_MS = 60_000;
+
 export interface PalworldRest {
   info(): Promise<{ version: string; servername: string }>;
   players(): Promise<{ name: string; playerId: string; userId: string }[]>;
@@ -25,13 +28,13 @@ export function createPalworldRest(opts: {
   port: number;
   password: string;
   timeoutMs?: number;
-  /** Saving a big world can take a while; kept under the supervisor's 30 s adapter-stop cap. */
+  /** Defaults to DEFAULT_SAVE_TIMEOUT_MS. */
   saveTimeoutMs?: number;
 }): PalworldRest {
   const base = `http://${opts.host ?? "127.0.0.1"}:${opts.port}/v1/api/`;
   const auth = "Basic " + Buffer.from(`admin:${opts.password}`).toString("base64");
   const timeoutMs = opts.timeoutMs ?? 5000;
-  const saveTimeoutMs = opts.saveTimeoutMs ?? 20_000;
+  const saveTimeoutMs = opts.saveTimeoutMs ?? DEFAULT_SAVE_TIMEOUT_MS;
 
   async function call(method: "GET" | "POST", path: string, body?: unknown, timeout = timeoutMs): Promise<string> {
     const headers: Record<string, string> = { Authorization: auth };

@@ -133,4 +133,14 @@ describe("palworld adapter", () => {
       expect(ctrlC).toHaveBeenCalledTimes(1);
     });
   });
+  it("exposes install metadata", async () => {
+    expect(palworld.steamAppId).toBe(2394010);
+    expect(palworld.installDefaults()).toEqual({ port: 8211, players: 32, perfFlags: true, restPort: 8212, extraArgs: "" });
+    expect(palworld.defaultStopTimeoutSec).toBe(120);
+    expect(palworld.saveLocations(rec("palworld", "C:\p"))).toEqual([path.join("C:\p", "Pal", "Saved", "SaveGames")]);
+    const f = tmpFolder();
+    touch(path.join(f, "Pal", "Binaries", "Win64", "PalServer-Win64-Shipping-Cmd.exe"));
+    const r = await palworld.inspectFolder(f);
+    expect(r.ok && r.launch).toEqual(palworld.installDefaults());
+  });
 });

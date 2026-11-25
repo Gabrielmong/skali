@@ -25,12 +25,13 @@ export function readTextFile(file: string): string | null {
 /**
  * Defense in depth for writes the service (SYSTEM) makes inside a folder the games user can modify: refuses when
  * `target`, or any directory between `root` (exclusive) and it, is a symlink or junction (lstat reports both).
- * Missing components are fine. `root` itself is the owner's choice and is not checked.
+ * Missing components are fine. `root` itself is not checked here (see assertNotLinked in servers/folders.ts).
+ * `verb` only words the error ("write", "back up").
  */
-export function assertNoReparsePoints(root: string, target: string): void {
+export function assertNoReparsePoints(root: string, target: string, verb = "write"): void {
   const rel = path.relative(path.resolve(root), path.resolve(target));
   if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
-    throw new BadRequestError(`Refusing to write outside the server folder: ${target}`);
+    throw new BadRequestError(`Refusing to ${verb} outside the server folder: ${target}`);
   }
   let cur = path.resolve(root);
   for (const part of rel.split(path.sep)) {
@@ -42,7 +43,7 @@ export function assertNoReparsePoints(root: string, target: string): void {
       if ((e as NodeJS.ErrnoException).code === "ENOENT") return; // nothing below can exist
       throw e;
     }
-    if (st.isSymbolicLink()) throw new BadRequestError(`Refusing to write through a link (junction or symlink): ${cur}`);
+    if (st.isSymbolicLink()) throw new BadRequestError(`Refusing to ${verb} through a link (junction or symlink): ${cur}`);
   }
 }
 

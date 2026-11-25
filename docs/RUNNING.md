@@ -420,10 +420,39 @@ Never run these on the dev PC. They need SYSTEM:
 ### Palworld and Minecraft
 
 Repeat the Valheim start/stop/restart checks for each, plus one command each (Palworld `announce hi`, Minecraft `list`).
-Install them manually first (SteamCMD for Palworld, a server jar for Minecraft).
+Install them from **New server**.
 
 - [ ] Palworld: **pending** (not installed yet)
 - [ ] Minecraft: **pending** (not installed yet)
+
+### New server and Update (server PC)
+
+- [ ] Fresh Palworld install from **New server**, then start it and send `announce hi`.
+- [ ] Fresh Valheim install with a new world: start it and join from a game client.
+- [ ] Minecraft Vanilla (latest) and Paper (latest) installs: start each and send `list`.
+- [ ] One basic install from the built-in list: **Finish setup**, then start it. Spot-check a couple of basic installs'
+      ports: the catalog's ports come from LinuxGSM's Linux defaults, and some names are raw Steam titles.
+- [ ] An app ID typed by hand installs.
+- [ ] A port clash with an existing server's port is shown in the setup dialog.
+- [ ] Update on Valheim while it is running: a backup zip is present and the server comes back up.
+- [ ] Minecraft update to a newer version: the old jar is kept as `.previous` and the world loads.
+- [ ] A failed update shows "Update failed", and starting the server afterwards clears it.
+- [ ] Auto-deploy waits during an install: the Deploys page shows the busy reason.
+- [ ] A forced failure (for example disconnect the network mid-download), then **Retry**.
+- [ ] Restart Skáli mid-install: the server shows "Install failed" with **Retry**.
+- [ ] Remove a failed install with "Also delete `<folder>`" ticked: the folder is gone. Unticked: the folder is kept.
+- [ ] The Steam install and error outputs match reality. The SteamCMD install-success and error test fixtures
+      (`apps/server/test/fixtures/steamcmd/`) were synthetic, so watch the first real install's log for the
+      "Success! App '<id>' fully installed" line and note any difference.
+- [ ] Managed Java folder (exists only after a first Minecraft install; do that first): `icacls C:\ProgramData\Skali\tools\java`
+      shows `SkaliGames:(OI)(CI)(RX)`, i.e. read and execute only, no `(M)` or `(F)`. And `icacls C:\ProgramData\Skali`
+      still lists only SYSTEM and Administrators.
+- [ ] Server folders are real folders, not junctions: `dir /AL <games root>` lists no `<JUNCTION>` or `<SYMLINKD>` for
+      any server. Junction refusal on Retry: make an install fail (for example disconnect the network mid-download),
+      then from an elevated shell rename that server's folder aside and create a junction in its place
+      (`mklink /J <folder> <some other empty folder>`); **Retry** fails with "… is a link (junction or symlink) …" and
+      the other folder gets no `SkaliGames` entry (`icacls <other folder>`). Remove the junction, rename the folder
+      back, then remove the install.
 
 ### Settings editor (server PC)
 

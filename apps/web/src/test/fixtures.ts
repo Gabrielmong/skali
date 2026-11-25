@@ -21,6 +21,10 @@ export function makeServer(over: Partial<ServerView> = {}): ServerView {
     ports: [],
     connectAddress: '192.168.0.100:25565',
     hasCommands: true,
+    job: null,
+    setupPending: false,
+    createdFolder: false,
+    steamAppId: null,
     ...over,
   }
 }

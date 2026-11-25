@@ -77,7 +77,9 @@ describe("firewall (fake runner only)", () => {
   });
 });
 
-describe("run (harmless commands only)", () => {
+// Real cmd/PowerShell processes: a cold PowerShell start under a busy whole-repo run can take well over vitest's
+// default 5 s, so these get a generous per-test timeout.
+describe("run (harmless commands only)", { timeout: 60_000 }, () => {
   it("runProcess captures output and exit code", async () => {
     const r = await runProcess("cmd", ["/c", "echo hi"]);
     expect(r.code).toBe(0);

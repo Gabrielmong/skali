@@ -35,6 +35,8 @@ export interface SupervisorDeps {
   emit: (e: SupervisorEvent) => void;
   now?: () => number;
   cpuCount?: number;
+  /** A reason the server may not be started right now (install running, setup pending...), or null. */
+  startGuard?: (id: string) => string | null;
   /** Test seam; defaults to FileTailer. */
   createTailer?: (file: string, opts: { fromStart: boolean }) => Tailer;
 }
@@ -44,7 +46,7 @@ const PROBE_MS = 5_000;
 const READY_TIMEOUT_MS = 10 * 60_000;
 const PLAYERS_MS = 15_000;
 const STOP_POLL_MS = 1_000;
-const ADAPTER_STOP_MAX_MS = 30_000;
+const ADAPTER_STOP_MAX_MS = 90_000;
 const MIN_POLL_AFTER_CTRLC_MS = 5_000;
 
 const NO_READY = "No ready signal seen";
@@ -166,6 +168,7 @@ export class Supervisor {
     const toStart: string[] = [];
     for (const rec of repo.list()) {
       if (rec.desired !== "running" || this.rts.get(rec.id)?.pid != null) continue;
+      if (this.deps.startGuard?.(rec.id)) continue; // a job owns the server: neither started nor crashed
       if (rec.autoStart) toStart.push(rec.id);
       else repo.update(rec.id, { desired: "stopped" });
     }
@@ -173,9 +176,9 @@ export class Supervisor {
   }
 
   /** A pending auto-restart is cancelled inside doStart, after validation, so a rejected start leaves it intact. */
-  start(id: string): Promise<void> {
+  start(id: string, opts: { skipGuard?: boolean } = {}): Promise<void> {
     const rt = this.rt(id);
-    return rt.mutex.run(() => this.doStart(rt));
+    return rt.mutex.run(() => this.doStart(rt, opts.skipGuard === true));
   }
 
   stop(id: string): Promise<void> {
@@ -189,6 +192,8 @@ export class Supervisor {
   /** Starts again only when the old process is known gone, so a failed forced stop never yields two instances. */
   restart(id: string): Promise<void> {
     const rt = this.rt(id);
+    const guard = this.deps.startGuard?.(id);
+    if (guard) return Promise.reject(new ConflictError(guard)); // refuse before stopping a running server
     this.cancelRestart(rt);
     return rt.mutex.run(async () => {
       if (!(await this.doStop(rt))) {
@@ -279,9 +284,12 @@ export class Supervisor {
 
   // ---------- start ----------
 
-  private async doStart(rt: Runtime): Promise<void> {
+  /** `skipGuard` is for a job starting its own server as its last step (the guard would refuse it as "Updating…"). */
+  private async doStart(rt: Runtime, skipGuard = false): Promise<void> {
     const { repo, helper } = this.deps;
     const rec = repo.get(rt.id);
+    const guard = skipGuard ? null : this.deps.startGuard?.(rt.id);
+    if (guard) throw new ConflictError(guard);
     const status = rt.state.status;
     if (status !== "stopped" && status !== "crashed") throw new ConflictError(`Server is ${status}`);
     const adapter = this.deps.adapter(rec.game);

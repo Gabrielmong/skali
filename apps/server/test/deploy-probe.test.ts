@@ -18,7 +18,7 @@ const tsx = path.resolve(__dirname, "../node_modules/tsx/dist/cli.mjs");
 const run = (dbPath?: string) =>
   spawnSync(process.execPath, [tsx, probeTs, ...(dbPath === undefined ? [] : [dbPath])], { encoding: "utf8" });
 
-describe("deploy-probe", () => {
+describe("deploy-probe", { timeout: 30_000 }, () => {
   it("prints userVersion, walBytes and servers", () => {
     const p = path.join(root, "t.db");
     const db = openDb(p);

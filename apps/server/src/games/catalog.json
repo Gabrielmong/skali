@@ -1,0 +1,1038 @@
+{
+  "source": "LinuxGSM (MIT) - https://github.com/GameServerManagers/LinuxGSM, filtered to Steam apps with a Windows depot",
+  "generated": "2026-11-25",
+  "entries": [
+    {
+      "appId": 294420,
+      "name": "7 Days to Die Dedicated Server"
+    },
+    {
+      "appId": 985050,
+      "name": "Action: Source Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 2239530,
+      "name": "American Truck Simulator Dedicated Server"
+    },
+    {
+      "appId": 376030,
+      "name": "ARK: Survival Evolved Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 233780,
+      "name": "Arma 3 Server",
+      "ports": [
+        {
+          "port": 2302,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1874900,
+      "name": "Arma Reforger Server"
+    },
+    {
+      "appId": 302550,
+      "name": "Assetto Corsa Dedicated Server"
+    },
+    {
+      "appId": 565060,
+      "name": "Avorion Dedicated Server",
+      "ports": [
+        {
+          "port": 27020,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 416880,
+      "name": "Ballistic Overkill Dedicated Server"
+    },
+    {
+      "appId": 1026340,
+      "name": "Barotrauma Dedicated Server"
+    },
+    {
+      "appId": 817300,
+      "name": "Base Defense Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 346680,
+      "name": "Black Mesa Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 228780,
+      "name": "Blade Symphony Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 475370,
+      "name": "BrainBread 2 Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 220070,
+      "name": "Chivalry: Medieval Warfare Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 7779,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 383410,
+      "name": "Codename CURE Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 748090,
+      "name": "Colony Survival Dedicated Server"
+    },
+    {
+      "appId": 443030,
+      "name": "Conan Exiles Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1963720,
+      "name": "Core Keeper Dedicated Server",
+      "ports": [
+        {
+          "port": 1234,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 730,
+      "name": "Counter-Strike 2",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 740,
+      "name": "Counter-Strike Global Offensive - Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 232330,
+      "name": "Counter-Strike: Source Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1670340,
+      "name": "Craftopia Dedicated Server"
+    },
+    {
+      "appId": 232290,
+      "name": "Day of Defeat: Source Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1088320,
+      "name": "Day of Dragons - Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 462310,
+      "name": "Day of Infamy Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 223350,
+      "name": "DayZ Server",
+      "ports": [
+        {
+          "port": 2302,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 343050,
+      "name": "Don't Starve Together Dedicated Server"
+    },
+    {
+      "appId": 317800,
+      "name": "Double Action Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 17585,
+      "name": "Dystopia Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 739590,
+      "name": "Eco Server"
+    },
+    {
+      "appId": 460040,
+      "name": "Empires Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1948160,
+      "name": "Euro Truck Simulator 2 Dedicated Server"
+    },
+    {
+      "appId": 295230,
+      "name": "Fistful of Frags Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 4020,
+      "name": "Garry's Mod Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 232370,
+      "name": "Half-Life 2: Deathmatch Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 255470,
+      "name": "Half-Life Deathmatch: Source Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 90,
+      "name": "Half-Life Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 405100,
+      "name": "Hurtworld Dedicated Server",
+      "ports": [
+        {
+          "port": 12871,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 12881,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1045940,
+      "name": "HYPERCHARGE: Unboxed Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 2728330,
+      "name": "HZ_SERVER",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 237410,
+      "name": "Insurgency Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 581330,
+      "name": "Insurgency: Sandstorm Dedicated Server",
+      "ports": [
+        {
+          "port": 27102,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27131,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 673990,
+      "name": "IOSoccer Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 869800,
+      "name": "Jabroni Brawl: Episode 3 - Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 261140,
+      "name": "Just Cause 2: Multiplayer - Dedicated Server"
+    },
+    {
+      "appId": 619960,
+      "name": "Just Cause™ 3: Multiplayer - Dedicated Server"
+    },
+    {
+      "appId": 232130,
+      "name": "Killing Floor 2 - Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 222860,
+      "name": "Left 4 Dead 2 Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 222840,
+      "name": "Left 4 Dead Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1136190,
+      "name": "Military Conflict: Vietnam Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 629800,
+      "name": "MORDHAU Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 4940,
+      "name": "Natural Selection 2 Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1169370,
+      "name": "Necesse Dedicated Server"
+    },
+    {
+      "appId": 317670,
+      "name": "No More Room in Hell Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 313900,
+      "name": "NS2: Combat Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 111710,
+      "name": "Nuclear Dawn - Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 950900,
+      "name": "Operation: Harsh Doorstop - Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27005,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 622970,
+      "name": "Pavlov VR Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 17575,
+      "name": "Pirates Vikings & Knights II Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 332670,
+      "name": "Project CARS - Dedicated Server"
+    },
+    {
+      "appId": 413770,
+      "name": "Project CARS 2 - Dedicated Server"
+    },
+    {
+      "appId": 380870,
+      "name": "Project Zomboid Dedicated Server"
+    },
+    {
+      "appId": 2210,
+      "name": "Quake 4",
+      "ports": [
+        {
+          "port": 28004,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 349090,
+      "name": "Quake Live Dedicated Server"
+    },
+    {
+      "appId": 339010,
+      "name": "Rising World Dedicated Server"
+    },
+    {
+      "appId": 4019830,
+      "name": "RuneScape: Dragonwilds Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 270150,
+      "name": "RUNNING WITH RIFLES"
+    },
+    {
+      "appId": 258550,
+      "name": "Rust Dedicated Server",
+      "ports": [
+        {
+          "port": 28015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 28017,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1690800,
+      "name": "Satisfactory Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 996560,
+      "name": "SCP: Secret Laboratory Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 638500,
+      "name": "Soldat Dedicated Server"
+    },
+    {
+      "appId": 3017300,
+      "name": "Soulmask Dedicated Server For Linux",
+      "ports": [
+        {
+          "port": 8777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 244310,
+      "name": "Source SDK Base 2013 Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 746200,
+      "name": "Squad 44 Dedicated Server",
+      "ports": [
+        {
+          "port": 10027,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 10037,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 403240,
+      "name": "Squad Dedicated Server",
+      "ports": [
+        {
+          "port": 7787,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27165,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1058020,
+      "name": "STAR WARS™ Battlefront (Classic, 2004)"
+    },
+    {
+      "appId": 6030,
+      "name": "STAR WARS™ Jedi Knight II: Jedi Outcast™",
+      "ports": [
+        {
+          "port": 27960,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 6020,
+      "name": "STAR WARS™ Jedi Knight: Jedi Academy™",
+      "ports": [
+        {
+          "port": 29070,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 211820,
+      "name": "Starbound"
+    },
+    {
+      "appId": 600760,
+      "name": "Stationeers Dedicated Server"
+    },
+    {
+      "appId": 974130,
+      "name": "StickyBots DedicatedServer",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1502300,
+      "name": "Survive the Nights Dedicated Server"
+    },
+    {
+      "appId": 276060,
+      "name": "Sven Co-op Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 3557020,
+      "name": "Team Fortress 2 Classified Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 232250,
+      "name": "Team Fortress 2 Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 380840,
+      "name": "Teeworlds"
+    },
+    {
+      "appId": 105600,
+      "name": "Terraria"
+    },
+    {
+      "appId": 2334200,
+      "name": "The Front Linux Dedicated Server",
+      "ports": [
+        {
+          "port": 5001,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 412680,
+      "name": "The Isle Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 439660,
+      "name": "Tower Unite Dedicated Server",
+      "ports": [
+        {
+          "port": 7777,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1110390,
+      "name": "Unturned Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 1136510,
+      "name": "Warfork Dedicated Server",
+      "ports": [
+        {
+          "port": 44400,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 402370,
+      "name": "Wurm Unlimited Dedicated Server",
+      "ports": [
+        {
+          "port": 3724,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        },
+        {
+          "port": 27016,
+          "protocol": "udp",
+          "purpose": "Query",
+          "forward": true
+        }
+      ]
+    },
+    {
+      "appId": 17505,
+      "name": "Zombie Panic! Source Dedicated Server",
+      "ports": [
+        {
+          "port": 27015,
+          "protocol": "udp",
+          "purpose": "Game",
+          "forward": true
+        }
+      ]
+    }
+  ]
+}

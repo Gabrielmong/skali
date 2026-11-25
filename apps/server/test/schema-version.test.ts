@@ -11,7 +11,7 @@ beforeEach(() => {
 });
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-describe("write-schema-version script", () => {
+describe("write-schema-version script", { timeout: 30_000 }, () => {
   it("writes the SCHEMA_VERSION a dist/db.js exports", () => {
     fs.writeFileSync(path.join(root, "db.js"), `export const SCHEMA_VERSION = ${SCHEMA_VERSION};\n`);
     const script = path.resolve(__dirname, "../scripts/write-schema-version.mjs");

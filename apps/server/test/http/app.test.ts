@@ -95,7 +95,11 @@ beforeEach(() => {
     inspect: vi.fn<AdopterApi["inspect"]>(async () => ({ ok: true, exe: "x.exe", launch: {}, notes: [] })),
     adopt: vi.fn<AdopterApi["adopt"]>(async (req) =>
       repo.create({ name: req.name, game: req.game, folder: req.folder, launch: req.launch, stopTimeoutSec: 60 })),
-    remove: vi.fn<AdopterApi["remove"]>(async (id) => repo.delete(id)),
+    remove: vi.fn<AdopterApi["remove"]>(async (id) => {
+      const rec = repo.get(id);
+      repo.delete(id);
+      return rec;
+    }),
   };
   fw = { ensure: vi.fn<Firewall["ensure"]>(async () => undefined), remove: vi.fn<Firewall["remove"]>(async () => undefined) };
 });
@@ -367,7 +371,7 @@ describe("servers", () => {
     const s = mkValheim();
     const r = await request(app()).delete(`/api/servers/${s.id}`).set("X-Skali", "1");
     expect(r.status).toBe(204);
-    expect(adopter.remove).toHaveBeenCalledWith(s.id, expect.any(Function));
+    expect(adopter.remove).toHaveBeenCalledWith(s.id, expect.any(Function), expect.any(Object));
     expect((adopter.remove.mock.calls[0]![1] as () => RuntimeState)()).toEqual({ status: "stopped", crashPaused: false });
     expect(supervisor.forget).toHaveBeenCalledWith(s.id);
     expect(events).toContainEqual({ type: "removed", serverId: s.id });
@@ -587,7 +591,30 @@ describe("/api/fs", () => {
 describe("settings", () => {
   it("GET returns settings", async () => {
     const r = await request(app()).get("/api/settings");
-    expect(r.body).toEqual({ allowlist: ["192.168.0.150"], connectHost: "192.168.0.100" });
+    expect(r.body).toMatchObject({ allowlist: ["192.168.0.150"], connectHost: "192.168.0.100" });
+  });
+  it("PUT gamesRoot stores a valid path and rejects a drive root", async () => {
+    const ok = await request(app()).put("/api/settings").set("X-Skali", "1").send({ gamesRoot: "E:\\Games" });
+    expect(ok.status).toBe(200);
+    expect((await request(app()).get("/api/settings")).body.gamesRoot).toBe("E:\\Games");
+    expect((await request(app()).put("/api/settings").set("X-Skali", "1").send({ gamesRoot: "C:\\" })).status).toBe(400);
+    expect((await request(app()).put("/api/settings").set("X-Skali", "1").send({ gamesRoot: null })).status).toBe(400);
+  });
+  it("PUT gamesRoot applies the install folder rules (as a parent) and stores nothing on refusal", async () => {
+    const put = (gamesRoot: string, over: Partial<AppDeps> = {}) =>
+      request(app(over)).put("/api/settings").set("X-Skali", "1").send({ gamesRoot });
+    const before = (await request(app()).get("/api/settings")).body.gamesRoot;
+    const win = await put(String.raw`C:\Windows`, { protectedPaths: { systemRoot: String.raw`C:\Windows` } });
+    expect(win.status).toBe(400);
+    expect(win.body).toEqual({ error: "This folder can't be used: it is a Windows system folder" });
+    const users = await put(String.raw`C:\Users`, { usersRoot: String.raw`C:\Users` });
+    expect(users.status).toBe(400);
+    expect(users.body).toEqual({ error: "This folder can't be used: it is a user profile folder" });
+    const data = await put(String.raw`C:\ProgramData\Skali`, { protectedPaths: { dataDir: String.raw`C:\ProgramData\Skali` } });
+    expect(data.status).toBe(400);
+    expect(data.body.error).toMatch(/Skáli's own data/);
+    expect((await request(app()).get("/api/settings")).body.gamesRoot).toBe(before);
+    expect((await put(String.raw`C:\ProgramData\Games`)).status).toBe(200);
   });
   it("PUT removing the caller's own IP → 400", async () => {
     const r = await request(app()).put("/api/settings").set("X-Skali", "1").send({ allowlist: ["192.168.0.151"] });
@@ -598,7 +625,7 @@ describe("settings", () => {
   it("PUT keeping the caller (directly or by range) succeeds", async () => {
     const r = await request(app()).put("/api/settings").set("X-Skali", "1").send({ allowlist: ["192.168.0.0/24"], connectHost: "gs.lan" });
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ allowlist: ["192.168.0.0/24"], connectHost: "gs.lan" });
+    expect(r.body).toMatchObject({ allowlist: ["192.168.0.0/24"], connectHost: "gs.lan" });
   });
   it("PUT accepts IPv4, DNS names and bracketed IPv6 for connectHost", async () => {
     for (const h of ["10.0.0.5", "gs.example.com", "SERVER-PC", "[fe80::1]", "a".repeat(63) + ".lan"]) {

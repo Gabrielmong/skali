@@ -9,6 +9,8 @@ export interface BusyDeps {
   repo: Pick<ServerRepo, "list">;
   /** The supervisor's runtime view, the same one views.ts renders. */
   state: (id: string) => RuntimeState;
+  /** Running install/update jobs. */
+  jobReasons?: () => string[];
   remoteOf: (req: IncomingMessage) => string | undefined;
 }
 
@@ -23,6 +25,7 @@ export function busyRouter(deps: BusyDeps): Router {
       const status = deps.state(rec.id).status;
       if (status === "starting" || status === "stopping") reasons.push(`${rec.name} is ${status}`);
     }
+    reasons.push(...(deps.jobReasons?.() ?? []));
     res.setHeader("Cache-Control", "no-store");
     res.json({ busy: reasons.length > 0, reasons });
   });

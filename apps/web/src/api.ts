@@ -2,6 +2,7 @@ import {
   SKALI_HEADER,
   SKALI_HEADER_VALUE,
   type AdoptRequest,
+  type CatalogEntry,
   type ConfigFileView,
   type ConfigFormat,
   type ConfigHistoryEntry,
@@ -12,9 +13,16 @@ import {
   type DeployStatusView,
   type FsListing,
   type GameInfo,
+  type InstallRequest,
+  type MinecraftFlavour,
+  type PortClash,
+  type PortSpec,
   type LaunchValues,
   type RunInfo,
   type ServerView,
+  type SteamAppInfo,
+  type ToolsStatus,
+  type UpdateRequest,
 } from '@skali/shared'
 
 export class ApiError extends Error {
@@ -29,6 +37,7 @@ export class ApiError extends Error {
 export interface AppSettings {
   allowlist: string[]
   connectHost: string
+  gamesRoot: string
 }
 
 export interface ValheimWorld {
@@ -48,6 +57,8 @@ export interface ServerPatch {
   autoRestart?: boolean
   autoStart?: boolean
   stopTimeoutSec?: number
+  /** basic servers only; null clears it. */
+  steamAppId?: number | null
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -93,7 +104,9 @@ export const inspectFolder = (game: string, folder: string) =>
   request<InspectResult>('POST', '/api/servers/inspect', { game, folder })
 export const adoptServer = (req: AdoptRequest) => request<ServerView>('POST', '/api/servers', req)
 export const patchServer = (id: string, patch: ServerPatch) => request<ServerView>('PATCH', srv(id), patch)
-export const deleteServer = (id: string) => request<void>('DELETE', srv(id))
+/** `deleteFolder` also removes the folder Skáli created for an install that never finished. */
+export const deleteServer = (id: string, deleteFolder = false) =>
+  request<void>('DELETE', `${srv(id)}${deleteFolder ? '?deleteFolder=1' : ''}`)
 /** 202: the operation has begun; the outcome arrives over the WebSocket. */
 export const startServer = (id: string) => request<ServerView>('POST', `${srv(id)}/start`)
 export const stopServer = (id: string) => request<ServerView>('POST', `${srv(id)}/stop`)
@@ -155,3 +168,23 @@ export const updateConfigSource = (id: string, sourceId: string, patch: { format
   request<ConfigSourceView>('PATCH', `${cfg(id)}/sources/${enc(sourceId)}`, patch)
 export const removeConfigSource = (id: string, sourceId: string) =>
   request<void>('DELETE', `${cfg(id)}/sources/${enc(sourceId)}`)
+
+// ---------- Setup (install new servers, update existing ones) ----------
+
+export const getCatalog = () => request<CatalogEntry[]>('GET', '/api/catalog')
+/** 404 "No Steam app with that ID" for an unknown app. */
+export const steamAppInfo = (appId: number) => request<SteamAppInfo>('POST', '/api/steam/app-info', { appId })
+export const minecraftVersions = (flavour: MinecraftFlavour) =>
+  request<{ versions: string[]; latest: string }>('GET', `/api/minecraft/versions?flavour=${enc(flavour)}`)
+export const checkPorts = (ports: Pick<PortSpec, 'port' | 'protocol'>[], exceptId?: string) =>
+  request<{ clashes: PortClash[] }>('POST', '/api/servers/check-ports', {
+    ports,
+    ...(exceptId !== undefined ? { exceptId } : {}),
+  })
+export const getTools = () => request<ToolsStatus>('GET', '/api/tools')
+export const installServer = (req: InstallRequest) => request<ServerView>('POST', '/api/servers/install', req)
+/** 202: the install resumes at its first failed step. */
+export const retryInstall = (id: string) => request<ServerView>('POST', `${srv(id)}/retry`)
+/** 202: the update has begun; `warnings` are things the owner should know. */
+export const updateServer = (id: string, req: UpdateRequest = {}) =>
+  request<{ warnings: string[] }>('POST', `${srv(id)}/update`, req)

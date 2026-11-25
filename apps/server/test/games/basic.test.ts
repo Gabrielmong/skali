@@ -81,4 +81,9 @@ describe("registry", () => {
     expect(listGames().map((g) => g.id).sort()).toEqual(["basic", "minecraft", "palworld", "valheim"]);
     expect(basic.info.hasCommands).toBe(false);
   });
+  it("exposes install metadata", () => {
+    expect(basic.steamAppId).toBeNull();
+    expect(basic.installDefaults()).toEqual({});
+    expect(basic.saveLocations(rec("basic", "C:\b"))).toEqual([]);
+  });
 });

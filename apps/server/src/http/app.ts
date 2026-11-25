@@ -10,6 +10,7 @@ import {
   SKALI_HEADER_VALUE,
   type AdoptRequest,
   type GameId,
+  type JobView,
   type LaunchValues,
   type PortSpec,
   type ServerView,
@@ -18,22 +19,24 @@ import { isDeepStrictEqual } from "node:util";
 import type { ConfigHistory } from "../config/history.js";
 import { ConfigService } from "../config/service.js";
 import type { ConfigSourcesRepo } from "../config/sources-repo.js";
-import { BadRequestError, ConflictError, NotFoundError } from "../errors.js";
+import { BadRequestError, ConflictError, ExposedError, NotFoundError } from "../errors.js";
 import { getAdapter, listGames } from "../games/registry.js";
 import type { GameAdapter } from "../games/types.js";
 import { appendSkaliLine, listRuns } from "../logs/runs.js";
 import type { Supervisor } from "../proc/supervisor.js";
 import { writeEula, type Adopter } from "../servers/adopt.js";
+import { assertAllowedFolder, defaultProtected, isUnder, type ProtectedPaths } from "../servers/folders.js";
 import type { ServerRecord, ServerRepo } from "../servers/repo.js";
 import type { AppSettings, SettingsStore } from "../settings.js";
 import { ensureFirewallRules, removeFirewallRules } from "../system/firewall.js";
 import { Mutex } from "../util/mutex.js";
 import { isAllowed, isAllowedHost, isValidAllowEntry, normalizeRemote } from "./allowlist.js";
-import { bodyObject, onlyKeys } from "./body.js";
+import { bodyObject, launchValues, onlyKeys } from "./body.js";
 import { busyRouter } from "./busy.js";
 import { configRouter, CONFIG_JSON_LIMIT } from "./config-routes.js";
 import { deploysRouter } from "./deploys.js";
 import { browse } from "./fs-browse.js";
+import { setupRouter, type SetupRouteDeps } from "./setup-routes.js";
 import { toView } from "./views.js";
 
 export type SupervisorApi = Pick<Supervisor, "state" | "start" | "stop" | "restart" | "command" | "forget">;
@@ -52,6 +55,9 @@ export interface AppDeps {
   supervisor: SupervisorApi;
   adopter: AdopterApi;
   settings: SettingsStore;
+  /** Live job view / busy reasons from the job runner. */
+  job?: (id: string) => JobView | null;
+  jobReasons?: () => string[];
   logsDir: string;
   webDist: string;
   adapter?: (id: GameId) => GameAdapter;
@@ -67,21 +73,22 @@ export interface AppDeps {
   deployerTokenFile?: string;
   /** How long start/stop/restart wait for an early rejection before answering 202. */
   opWindowMs?: number;
-}
-
-/** An error whose message is meant for the client, with its own status. */
-class ExposedError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message);
-  }
+  /** The New server gallery helpers (catalog, Steam app lookup, versions, port checks, tools, install); routes are not mounted when unset. */
+  setup?: Omit<SetupRouteDeps, "view">;
+  /** Folder rules re-checked before DELETE ?deleteFolder=1 (default: the process environment; usersRoot C:\Users). */
+  protectedPaths?: Partial<ProtectedPaths>;
+  usersRoot?: string;
+  /** Shared with the installer so both serialize saves per server; built here when unset. */
+  configService?: ConfigService;
 }
 
 export const JSON_LIMIT = "64kb";
 const OP_WINDOW_MS = 250;
 const MAX_COMMAND = 1000;
-const MAX_LAUNCH_KEYS = 64;
-const MAX_LAUNCH_STRING = 4096;
-const PATCH_KEYS = new Set(["name", "autoRestart", "autoStart", "stopTimeoutSec", "launch"]);
+const PATCH_KEYS = new Set(["name", "autoRestart", "autoStart", "stopTimeoutSec", "launch", "steamAppId"]);
+const MAX_APP_ID = 2 ** 31;
+/** Launch values the installer/updater records (Minecraft); a PATCH may echo them back but never change them. */
+const INSTALL_SET_KEYS = new Set(["mcFlavour", "mcVersion", "paperBuild"]);
 const ADOPT_KEYS = new Set(["game", "name", "folder", "launch", "importWorldFrom", "acceptEula"]);
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -98,19 +105,29 @@ function reqString(b: Record<string, unknown>, k: string): string {
   if (typeof v !== "string") throw new BadRequestError(`${k} must be a string`);
   return v;
 }
-function launchValues(v: unknown): LaunchValues {
-  if (!v || typeof v !== "object" || Array.isArray(v)) throw new BadRequestError("launch must be an object");
-  const entries = Object.entries(v as Record<string, unknown>);
-  if (entries.length > MAX_LAUNCH_KEYS) throw new BadRequestError("Too many launch values");
-  for (const [k, x] of entries) {
-    const ok =
-      typeof x === "boolean" ||
-      (typeof x === "number" && Number.isFinite(x)) ||
-      (typeof x === "string" && x.length <= MAX_LAUNCH_STRING);
-    if (!ok) throw new BadRequestError(`Invalid launch value: ${k}`);
+/** A setup-pending server's chosen program must be a file inside its folder. */
+function assertProgramInFolder(folder: string, launch: LaunchValues): void {
+  const exe = typeof launch.exe === "string" ? launch.exe.trim() : "";
+  const abs = path.resolve(folder, exe);
+  const rel = path.relative(path.resolve(folder), abs);
+  let ok = exe !== "" && rel !== "" && rel !== ".." && !rel.startsWith(".." + path.sep) && !path.isAbsolute(rel);
+  if (ok) {
+    try {
+      // A real file inside the folder: no junction/symlink on the way, and not a link itself.
+      let cur = path.resolve(folder);
+      for (const part of rel.split(path.sep)) {
+        cur = path.join(cur, part);
+        const st = fs.lstatSync(cur);
+        if (st.isSymbolicLink()) ok = false;
+      }
+      ok = ok && fs.lstatSync(abs).isFile();
+    } catch {
+      ok = false;
+    }
   }
-  return { ...(v as LaunchValues) };
+  if (!ok) throw new BadRequestError(`Server program not found in the server folder: ${exe || "(none)"}`);
 }
+
 const portsKey = (ps: PortSpec[]) =>
   JSON.stringify(ps.filter((p) => p.forward).map((p) => `${p.port}/${p.protocol}`).sort());
 
@@ -129,6 +146,8 @@ export function createApp(deps: AppDeps): express.Express {
     }
   };
   const opWindowMs = deps.opWindowMs ?? OP_WINDOW_MS;
+  const prot: ProtectedPaths = { ...defaultProtected(), ...deps.protectedPaths };
+  const usersRoot = deps.usersRoot ?? "C:\\Users";
   const gameIds = new Set<string>(listGames().map((g) => g.id));
   /** Serializes edits and removals, which pair a repo change with firewall changes. */
   const editLock = new Mutex();
@@ -138,7 +157,7 @@ export function createApp(deps: AppDeps): express.Express {
     if (removing.has(id)) throw new ConflictError("Server is being removed");
   };
 
-  const view = (rec: ServerRecord): ServerView => toView(rec, supervisor.state(rec.id), adapterOf(rec.game), settings.get());
+  const view = (rec: ServerRecord): ServerView => toView(rec, supervisor.state(rec.id), adapterOf(rec.game), settings.get(), deps.job?.(rec.id) ?? null);
   const gameOf = (v: unknown): GameId => {
     if (typeof v !== "string" || !gameIds.has(v)) throw new BadRequestError("Unknown game");
     return v as GameId;
@@ -162,7 +181,7 @@ export function createApp(deps: AppDeps): express.Express {
   // and before anything else under /api/deploys.
   app.use(
     "/api/deploys/busy",
-    busyRouter({ repo, state: (id) => supervisor.state(id), remoteOf }),
+    busyRouter({ repo, state: (id) => supervisor.state(id), jobReasons: deps.jobReasons, remoteOf }),
   );
 
   // 1. Host (DNS rebinding), 2. allowlist, 3. CSRF header. No CORS handling is registered anywhere.
@@ -193,6 +212,44 @@ export function createApp(deps: AppDeps): express.Express {
 
   if (deps.deployerUrl && deps.deployerTokenFile) {
     app.use("/api/deploys", deploysRouter({ deployerUrl: deps.deployerUrl, deployerTokenFile: deps.deployerTokenFile, log }));
+  }
+
+  if (deps.setup) {
+    const inst = deps.setup.installer;
+    const upd = deps.setup.updater;
+    app.use(
+      "/api",
+      setupRouter({
+        ...deps.setup,
+        // Retry shares DELETE's serialization: refused while a removal is in flight, and a DELETE that follows sees
+        // the job running (Adopter.remove refuses it), so no job can start on a record or folder being removed.
+        installer: inst && {
+          install: (req) => inst.install(req),
+          retry: (id) => {
+            notBeingRemoved(id);
+            return editLock.run(() => {
+              notBeingRemoved(id);
+              return inst.retry(id);
+            });
+          },
+        },
+        // Update shares retry's serialization: it can't start on a server being removed, and a PATCH/DELETE can't slip
+        // between its checks and the job start. The Minecraft version lookup (network) runs before the lock is taken;
+        // the updater checks everything again inside it.
+        updater: upd && {
+          update: (id, req) => {
+            notBeingRemoved(id);
+            return upd.update(id, req, (fn) =>
+              editLock.run(() => {
+                notBeingRemoved(id);
+                return fn();
+              }),
+            );
+          },
+        },
+        view: (id) => view(repo.get(id)),
+      }),
+    );
   }
 
   // ---------- games & servers ----------
@@ -245,6 +302,10 @@ export function createApp(deps: AppDeps): express.Express {
 
   async function patchServer(id: string, b: Record<string, unknown>): Promise<ServerRecord> {
     const cur = repo.get(id);
+    // Job steps read the record fresh (name for firewall rules, launch, app id): no edits mid-job.
+    if (cur.job?.state === "running") {
+      throw new ConflictError(cur.job.kind === "install" ? "Wait for the install to finish" : "Wait for the update to finish");
+    }
     const adapter = adapterOf(cur.game);
     if (b.name !== undefined && typeof b.name !== "string") throw new BadRequestError("name must be a string");
     const autoRestart = optBool(b, "autoRestart");
@@ -254,11 +315,26 @@ export function createApp(deps: AppDeps): express.Express {
       throw new BadRequestError("stopTimeoutSec must be a whole number of seconds between 5 and 3600");
     }
     const name = (b.name as string | undefined) ?? cur.name;
+    const appId = b.steamAppId;
+    if (appId !== undefined) {
+      if (cur.game !== "basic") throw new BadRequestError("Only basic servers take a Steam app ID");
+      if (appId !== null && !(typeof appId === "number" && Number.isInteger(appId) && appId >= 1 && appId <= MAX_APP_ID)) {
+        throw new BadRequestError("Steam app ID must be a whole number");
+      }
+    }
+    // The first launch save of a server still in setup confirms its program; the firewall syncs even if ports match.
+    const finishSetup = cur.setupPending && b.launch !== undefined;
     let launch = cur.launch;
     if (b.launch !== undefined) {
       const incoming = launchValues(b.launch);
       const declared = new Set(adapter.info.launchFields.map((f) => f.key));
       for (const k of Object.keys(incoming)) {
+        if (INSTALL_SET_KEYS.has(k) && cur.launch[k] !== undefined) {
+          // Set by install/update (Update's downgrade warning relies on them): echoed back unchanged is fine.
+          if (incoming[k] !== cur.launch[k]) throw new BadRequestError(`${k} is set by Skáli's install and update; it can't be edited`);
+          delete incoming[k];
+          continue;
+        }
         if (!declared.has(k)) throw new BadRequestError(`Unknown launch setting for ${adapter.info.displayName}: ${k}`);
       }
       for (const f of adapter.info.launchFields) {
@@ -273,6 +349,7 @@ export function createApp(deps: AppDeps): express.Express {
       const errors = adapter.validateLaunch(name, launch);
       if (errors.length) throw new BadRequestError(errors.join("; "));
     }
+    if (finishSetup) assertProgramInFolder(cur.folder, launch);
     let oldPorts: PortSpec[] = [];
     try {
       oldPorts = adapter.ports(cur);
@@ -286,6 +363,8 @@ export function createApp(deps: AppDeps): express.Express {
       ...(autoRestart !== undefined ? { autoRestart } : {}),
       ...(autoStart !== undefined ? { autoStart } : {}),
       ...(st !== undefined ? { stopTimeoutSec: st as number } : {}),
+      ...(appId !== undefined ? { steamAppId: appId as number | null } : {}),
+      ...(finishSetup ? { setupPending: false } : {}),
     });
     /** Only after the ports and firewall steps succeed, so a reverted change never shows as restart pending. */
     const touched = (): ServerRecord => {
@@ -303,7 +382,7 @@ export function createApp(deps: AppDeps): express.Express {
       revert(cur);
       throw e instanceof BadRequestError ? e : new BadRequestError(errMsg(e));
     }
-    if (!nameChanged && portsKey(oldPorts) === portsKey(newPorts)) return touched();
+    if (!finishSetup && !nameChanged && portsKey(oldPorts) === portsKey(newPorts)) return touched();
     try {
       if (nameChanged) await fw.remove(cur.name);
       await fw.ensure(next.name, newPorts);
@@ -329,6 +408,8 @@ export function createApp(deps: AppDeps): express.Express {
         autoRestart: cur.autoRestart,
         autoStart: cur.autoStart,
         stopTimeoutSec: cur.stopTimeoutSec,
+        steamAppId: cur.steamAppId,
+        setupPending: cur.setupPending,
       });
     } catch (e) {
       log(`Reverting ${cur.name} failed: ${errMsg(e)}`);
@@ -337,14 +418,31 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.delete("/api/servers/:id", async (req, res) => {
     const id = param(req, "id");
+    const wantFolderGone = req.query.deleteFolder === "1";
     repo.get(id);
     if (removing.has(id)) throw new ConflictError("Server is being removed");
     removing.add(id);
+    let folderError = null as string | null;
     try {
       await editLock.run(async () => {
-        repo.get(id);
+        const pre = repo.get(id);
+        // Refuse up front (nothing removed) when the folder can't safely be deleted.
+        if (wantFolderGone && folderDeletable(pre)) assertFolderDeletable(pre);
         // A getter: the adopter re-checks after its firewall step, before deleting the record.
-        await adopter.remove(id, () => supervisor.state(id));
+        await adopter.remove(id, () => supervisor.state(id), {
+          // Deleted while the record still exists and DELETE holds the lock, so an install to the same path is
+          // refused (folder overlap) until the folder is gone.
+          beforeDelete: async (cur) => {
+            if (!wantFolderGone || !folderDeletable(cur)) return;
+            try {
+              assertFolderDeletable(cur);
+              await fs.promises.rm(cur.folder, { recursive: true, force: true });
+            } catch (e) {
+              folderError = errMsg(e);
+              log(`Deleting ${cur.folder} while removing ${cur.name} failed: ${folderError}`);
+            }
+          },
+        });
       });
     } finally {
       removing.delete(id);
@@ -361,12 +459,31 @@ export function createApp(deps: AppDeps): express.Express {
       log(`Removing config history for ${id} failed: ${errMsg(e)}`);
     }
     notify({ type: "removed", serverId: id });
+    if (folderError !== null) throw new ExposedError(500, `The server was removed, but deleting its folder failed: ${folderError}`);
     res.status(204).end();
   });
 
+  /** Only the folder Skáli created for an install that never finished; otherwise deleteFolder is ignored. */
+  function folderDeletable(rec: ServerRecord): boolean {
+    return rec.createdFolder && rec.job?.kind === "install" && rec.job.state === "failed";
+  }
+
+  /** ConflictError when the folder rules deny it or another server's folder is inside it or contains it. */
+  function assertFolderDeletable(rec: ServerRecord): void {
+    try {
+      assertAllowedFolder(rec.folder, usersRoot, prot, "used");
+    } catch (e) {
+      throw new ConflictError(`${errMsg(e)}. Remove the server without deleting its folder.`);
+    }
+    const other = repo.list().find((s) => s.id !== rec.id && (isUnder(s.folder, rec.folder) || isUnder(rec.folder, s.folder)));
+    if (other) {
+      throw new ConflictError(`Can't delete ${rec.folder}: it overlaps ${other.name}'s folder. Remove the server without deleting its folder.`);
+    }
+  }
+
   // ---------- config files ----------
 
-  const configService = new ConfigService({
+  const configService = deps.configService ?? new ConfigService({
     repo,
     sources: configSources,
     history: configHistory,
@@ -401,12 +518,27 @@ export function createApp(deps: AppDeps): express.Express {
     ]);
     clearTimeout(timer);
     if (early && !early.ok) throw early.e;
+    if (early) clearFailedUpdate(op, id);
     if (!early) {
       void outcome.then((o) => {
         if (!o.ok) log(`${op} of ${rec.name} (${id}) failed: ${errMsg(o.e)}`);
+        else clearFailedUpdate(op, id);
       });
     }
     return view(repo.get(id));
+  }
+
+  /** The owner started the server after a failed update ("check the server, then start it"): the failure is acknowledged. */
+  function clearFailedUpdate(op: "start" | "stop" | "restart", id: string): void {
+    if (op === "stop") return;
+    try {
+      const cur = repo.get(id);
+      if (cur.job?.kind !== "update" || cur.job.state !== "failed") return;
+      repo.update(id, { job: null });
+      notify({ type: "changed", serverId: id });
+    } catch (e) {
+      log(`Clearing the failed update of ${id} failed: ${errMsg(e)}`);
+    }
   }
 
   for (const op of ["start", "stop", "restart"] as const) {
@@ -494,7 +626,7 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.put("/api/settings", (req, res) => {
     const b = bodyObject(req);
-    onlyKeys(b, new Set(["allowlist", "connectHost"]));
+    onlyKeys(b, new Set(["allowlist", "connectHost", "gamesRoot"]));
     const patch: Partial<AppSettings> = {};
     if (b.allowlist !== undefined) {
       const list = b.allowlist;
@@ -507,6 +639,14 @@ export function createApp(deps: AppDeps): express.Express {
     if (b.connectHost !== undefined) {
       if (typeof b.connectHost !== "string") throw new BadRequestError("connectHost must be a string");
       patch.connectHost = b.connectHost;
+    }
+    if (b.gamesRoot !== undefined) {
+      if (typeof b.gamesRoot !== "string") throw new BadRequestError("gamesRoot must be a string");
+      // Installs go into <gamesRoot>\<name>, so the root must pass the install folder rules as a parent.
+      // (A path that isn't X:\... gets the settings store's own message below.)
+      const root = b.gamesRoot.trim();
+      if (/^[A-Za-z]:[\\/]/.test(root)) assertAllowedFolder(path.win32.join(root, "x"), usersRoot, prot, "used");
+      patch.gamesRoot = b.gamesRoot;
     }
     const out = settings.update(patch);
     notify({ type: "allChanged" });

@@ -15,7 +15,8 @@ import { fakeGameAdapter } from "../support/survival-adapter.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-describe.skipIf(process.platform !== "win32")("game survives Skali process death", () => {
+// Spawns tsx, SkaliHelper and FakeGame for real; generous timeouts so a busy whole-repo run doesn't trip them.
+describe.skipIf(process.platform !== "win32")("game survives Skali process death", { timeout: 120_000 }, () => {
   const key = Buffer.alloc(32, 7);
   let dir: string;
   let db: Db | null = null;
@@ -93,8 +94,16 @@ describe.skipIf(process.platform !== "win32")("game survives Skali process death
     ]);
     const pid = started as number;
 
-    // Kill the whole host tree.
-    execFileSync("taskkill", ["/T", "/F", "/PID", String(host.pid)], { stdio: "ignore" });
+    // Kill the whole host tree. taskkill exits non-zero when the host (or a child in its tree) is already gone
+    // ("process not found"); that is fine as long as the host does exit.
+    try {
+      execFileSync("taskkill", ["/T", "/F", "/PID", String(host.pid)], { stdio: "ignore" });
+    } catch (e) {
+      await Promise.race([
+        hostExit,
+        sleep(15_000).then(() => Promise.reject(new Error(`taskkill failed and the host is still running: ${String(e)}`))),
+      ]);
+    }
     await hostExit;
     await sleep(2000);
 
@@ -126,5 +135,5 @@ describe.skipIf(process.platform !== "win32")("game survives Skali process death
     expect(lines.at(-1)).toBe("SAVED");
     expect(log).not.toContain("Forced stop");
     expect((await helper().stats([pid]))[0]!.alive).toBe(false);
-  }, 60_000);
+  }, 120_000);
 });

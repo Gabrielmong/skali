@@ -78,7 +78,29 @@ export type ServerView = ServerRecordPublic &
     commandHelp?: string;
     /** The server is up and its config changed after it started. */
     restartPending: boolean;
+    job: JobView | null;
+    setupPending: boolean;
+    createdFolder: boolean;
+    steamAppId: number | null;
   };
+
+export type JobKind = "install" | "update";
+export type JobStepState = "pending" | "running" | "done" | "failed" | "skipped";
+export interface JobStepView { id: string; label: string; state: JobStepState }
+export interface JobView { kind: JobKind; state: "running" | "failed"; steps: JobStepView[]; /** 0–100 */ progress: number | null; error?: string; runId: string }
+export type MinecraftFlavour = "vanilla" | "paper";
+export interface InstallRequest {
+  game: GameId; name: string; folder: string; launch: LaunchValues;
+  appId?: number; // basic only
+  minecraft?: { flavour: MinecraftFlavour; version: string };
+  palworld?: { serverName: string; serverPassword: string; maxPlayers: number };
+  acceptEula?: boolean; // minecraft: must be true
+}
+export interface UpdateRequest { minecraft?: { flavour: MinecraftFlavour; version: string } }
+export interface CatalogEntry { appId: number | null; game: GameId; name: string; star: boolean; ports?: PortSpec[]; exeHint?: string; notes?: string }
+export interface SteamAppInfo { appId: number; name: string; windows: boolean }
+export interface PortClash { port: number; protocol: "udp" | "tcp"; reason: string }
+export interface ToolsStatus { steamcmd: boolean; java: number[] }
 
 /** The masked value of a password launch field; sending it back in a PATCH keeps the stored value. */
 export const MASKED_SECRET = "****";

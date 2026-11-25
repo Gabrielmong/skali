@@ -56,7 +56,7 @@ export function ServerCard({ server }: { server: ServerView }) {
             >
               {server.name}
             </MuiLink>
-            <StatusChip status={status} />
+            <StatusChip status={status} job={server.job} setupPending={server.setupPending} />
             {server.restartPending && <RestartPendingChip />}
           </Stack>
 

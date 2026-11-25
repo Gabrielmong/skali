@@ -8,6 +8,7 @@ import {
   DialogContentText,
   DialogTitle,
   Snackbar,
+  Tooltip,
 } from '@mui/material'
 import type { ServerView } from '@skali/shared'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -154,16 +155,31 @@ export function useServerActions(server: ServerView): ServerActions {
   return { busy, run, ask, copyAddress, setError, ui }
 }
 
+/** Why Start is refused (mirrors the server's start guard), or null when it is allowed. A failed update does not block. */
+export function startBlockReason(server: Pick<ServerView, 'job' | 'setupPending'>): string | null {
+  const { job } = server
+  if (job?.state === 'running') return job.kind === 'install' ? 'Installing…' : 'Updating…'
+  if (job?.state === 'failed' && job.kind === 'install') return 'Install failed — retry or remove it'
+  if (server.setupPending) return 'Finish setup first'
+  return null
+}
+
 /** Start, or Restart + Stop, or a disabled "Stopping" button, by status. */
 export function ActionButtons({ server, actions }: { server: ServerView; actions: ServerActions }) {
   const { status } = server
   const { busy, run, ask } = actions
+  const blocked = startBlockReason(server)
   return (
     <>
       {(status === 'stopped' || status === 'crashed') && (
-        <Button variant="contained" disabled={busy !== null} onClick={() => void run('start')}>
-          Start
-        </Button>
+        <Tooltip title={blocked ?? ''} describeChild>
+          {/* A disabled button swallows hover, so the span carries the tooltip. */}
+          <span>
+            <Button variant="contained" disabled={busy !== null || blocked !== null} onClick={() => void run('start')}>
+              Start
+            </Button>
+          </span>
+        </Tooltip>
       )}
       {(status === 'starting' || status === 'running') && (
         <>

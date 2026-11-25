@@ -26,12 +26,15 @@ export const valheim: GameAdapter = {
   configSources: [],
   ready: { kind: "pattern", pattern: /Game server connected/ },
   defaultStopTimeoutSec: 90,
+  steamAppId: 896660,
+  installDefaults: () => ({ port: 2456, world: "Dedicated", public: true, crossplay: false, extraArgs: "" }),
+  saveLocations: (s) => [path.join(s.folder, "saves")],
   async inspectFolder(folder) {
     if (!fs.existsSync(path.join(folder, EXE))) return { ok: false, reason: `${EXE} not found in this folder` };
     return {
       ok: true,
       exe: EXE,
-      launch: { port: 2456, world: "Dedicated", public: true, crossplay: false, extraArgs: "" },
+      launch: valheim.installDefaults(),
       notes: [],
     };
   },

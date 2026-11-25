@@ -32,6 +32,11 @@ const MIGRATIONS: string[] = [
      created_at TEXT NOT NULL,
      UNIQUE (server_id, path COLLATE NOCASE)
    );`,
+  // v3
+  `ALTER TABLE servers ADD COLUMN steam_app_id INTEGER;
+   ALTER TABLE servers ADD COLUMN setup_pending INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE servers ADD COLUMN created_folder INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE servers ADD COLUMN job TEXT;`,
 ];
 
 /** The newest schema this build understands (PRAGMA user_version after all migrations). */

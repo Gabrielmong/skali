@@ -57,4 +57,9 @@ describe("valheim adapter", () => {
     const s = rec("valheim", "C:\\v", { port: fake.port - 1 });
     expect(await valheim.players(s)).toEqual({ online: 3, max: 10 });
   });
+  it("exposes install metadata", () => {
+    expect(valheim.steamAppId).toBe(896660);
+    expect(valheim.installDefaults()).toEqual({ port: 2456, world: "Dedicated", public: true, crossplay: false, extraArgs: "" });
+    expect(valheim.saveLocations(rec("valheim", "C:\v"))).toEqual([path.join("C:\v", "saves")]);
+  });
 });

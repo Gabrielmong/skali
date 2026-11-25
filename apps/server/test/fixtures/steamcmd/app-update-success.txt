@@ -1,0 +1,15 @@
+Steam Console Client (c) Valve Corporation - version 1794537082
+-- type 'quit' to exit --
+Loading Steam API...OK
+
+Connecting anonymously to Steam Public...OK
+Waiting for client config...OK
+Waiting for user info...OK
+ Update state (0x3) reconfiguring, progress: 0.00 (0 / 0)
+ Update state (0x11) preallocating, progress: 12.50 (34200 / 273600)
+ Update state (0x61) downloading, progress: 0.00 (0 / 273600)
+ Update state (0x61) downloading, progress: 45.12 (123456 / 273600)
+ Update state (0x61) downloading, progress: 99.80 (273053 / 273600)
+ Update state (0x81) verifying update, progress: 50.00 (136800 / 273600)
+Success! App '896660' fully installed.
+Unloading Steam API...OK

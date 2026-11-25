@@ -103,4 +103,30 @@ describe("minecraft adapter", () => {
       expect(ctrlC).toHaveBeenCalledTimes(1);
     });
   });
+  it("exposes install metadata", async () => {
+    expect(minecraft.steamAppId).toBeNull();
+    const d = minecraft.installDefaults();
+    expect(d).toEqual({ jar: "server.jar", javaPath: "java", memoryMb: 4096, jvmArgs: "", port: 25565, rconPort: 25575 });
+    expect("mcFlavour" in d).toBe(false);
+  });
+  it("saveLocations follows level-name, defaulting to world", () => {
+    const f = tmpFolder();
+    expect(minecraft.saveLocations(rec("minecraft", f))).toEqual(["world", "world_nether", "world_the_end"].map((n) => path.join(f, n)));
+    touch(path.join(f, "server.properties"), "level-name=myworld\n");
+    expect(minecraft.saveLocations(rec("minecraft", f))).toEqual(["myworld", "myworld_nether", "myworld_the_end"].map((n) => path.join(f, n)));
+  });
+  it("saveLocations drops a level-name that leaves the server folder (or is the folder itself)", () => {
+    const f = tmpFolder();
+    touch(path.join(f, "server.properties"), String.raw`level-name=..\\..\\` + "\n"); // ..\..\ once unescaped
+    expect(minecraft.saveLocations(rec("minecraft", f))).toEqual([]);
+    touch(path.join(f, "server.properties"), "level-name=../outside\n");
+    expect(minecraft.saveLocations(rec("minecraft", f))).toEqual([]);
+    touch(path.join(f, "server.properties"), String.raw`level-name=C\:\\ProgramData\\Skali` + "\n");
+    expect(minecraft.saveLocations(rec("minecraft", f))).toEqual([]);
+    touch(path.join(f, "server.properties"), "level-name=.\n");
+    // "." is the folder itself (dropped); "._nether" / "._the_end" are ordinary names inside it.
+    expect(minecraft.saveLocations(rec("minecraft", f))).toEqual(["._nether", "._the_end"].map((n) => path.join(f, n)));
+    touch(path.join(f, "server.properties"), "level-name=worlds/main\n");
+    expect(minecraft.saveLocations(rec("minecraft", f))).toEqual(["main", "main_nether", "main_the_end"].map((n) => path.join(f, "worlds", n)));
+  });
 });
