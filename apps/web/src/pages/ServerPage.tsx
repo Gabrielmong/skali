@@ -1,14 +1,17 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import ContentCopyIcon from '@mui/icons-material/ContentCopy'
-import { Alert, Box, Button, IconButton, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material'
+import { Alert, Box, Button, Card, CardContent, Stack, Tab, Tabs, Typography } from '@mui/material'
 import type { GameInfo } from '@skali/shared'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { getGames } from '../api.ts'
 import { Console } from '../components/Console.tsx'
+import { EmptyState } from '../components/EmptyState.tsx'
 import { JobPanel } from '../components/JobPanel.tsx'
 import { OverviewTab } from '../components/OverviewTab.tsx'
-import { ActionButtons, formatUptime, useNow, useServerActions } from '../components/ServerActions.tsx'
+import { AddressChip } from '../components/AddressChip.tsx'
+import { GameIcon } from '../components/GameIcon.tsx'
+import { ActionButtons, useNow, useServerActions } from '../components/ServerActions.tsx'
+import { ServerStats } from '../components/ServerStats.tsx'
 import { SettingsTab } from '../components/settings/SettingsTab.tsx'
 import { RestartPendingChip, StatusChip } from '../components/StatusChip.tsx'
 import { useServerLogs, useServers } from '../live.tsx'
@@ -23,6 +26,7 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
   const logs = useServerLogs(server.id)
   const live = server.status === 'running' || server.status === 'starting'
   const now = useNow(live && !!server.startedAt)
+  const headingId = useId()
 
   // A job writes to its own console run: show it when one begins (or when the page opens mid-job).
   const jobRunId = server.job?.runId
@@ -39,47 +43,46 @@ function Detail({ server, game }: { server: ServerView; game: GameInfo | undefin
           All servers
         </Button>
       </Box>
-      <Stack direction="row" spacing={1.5} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <Typography variant="h5" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {server.name}
-        </Typography>
-        <StatusChip status={server.status} job={server.job} setupPending={server.setupPending} />
-        {server.restartPending && <RestartPendingChip />}
-        {live && server.startedAt && (
-          <Typography variant="body2" color="text.secondary">
-            {formatUptime(server.startedAt, now)}
-          </Typography>
-        )}
-        {server.players && (
-          <Tooltip title="Players online">
-            <Typography variant="body2">{`${server.players.online}/${server.players.max}`}</Typography>
-          </Tooltip>
-        )}
-        <Stack direction="row" sx={{ alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-            {server.connectAddress}
-          </Typography>
-          <Tooltip title="Copy address">
-            <IconButton size="small" aria-label="Copy address" onClick={actions.copyAddress}>
-              <ContentCopyIcon fontSize="inherit" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-        <Box sx={{ flexGrow: 1 }} />
-        <Stack direction="row" spacing={1}>
-          <ActionButtons server={server} actions={actions} />
-        </Stack>
-      </Stack>
-      {server.crashPaused && (
-        <Typography variant="body2" color="error">
-          Auto-restart paused after repeated crashes
-        </Typography>
-      )}
-      {server.detail && (
-        <Alert severity={server.status === 'crashed' ? 'error' : 'warning'} variant="outlined" sx={{ py: 0 }}>
-          {server.detail}
-        </Alert>
-      )}
+      <Card component="section" aria-labelledby={headingId}>
+        <CardContent>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'center' } }}>
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
+              <GameIcon game={server.game} size="large" />
+              <Stack spacing={1} sx={{ minWidth: 0, flexGrow: 1 }}>
+                <Stack direction="row" spacing={1.25} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+                  <Typography
+                    id={headingId}
+                    variant="h5"
+                    component="h1"
+                    sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {server.name}
+                  </Typography>
+                  <StatusChip status={server.status} job={server.job} setupPending={server.setupPending} />
+                  {server.restartPending && <RestartPendingChip />}
+                </Stack>
+                <Stack direction="row" useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 1 }}>
+                  <ServerStats server={server} now={now} />
+                  <AddressChip address={server.connectAddress} onCopy={actions.copyAddress} />
+                </Stack>
+              </Stack>
+            </Stack>
+            <Stack direction="row" spacing={1} sx={{ flexShrink: 0, flexWrap: 'wrap' }}>
+              <ActionButtons server={server} actions={actions} />
+            </Stack>
+          </Stack>
+          {server.crashPaused && (
+            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+              Auto-restart paused after repeated crashes
+            </Typography>
+          )}
+          {server.detail && (
+            <Alert severity={server.status === 'crashed' ? 'error' : 'warning'} variant="outlined" sx={{ py: 0, mt: 2 }}>
+              {server.detail}
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       {server.job && <JobPanel server={server} />}
 
@@ -139,16 +142,13 @@ export function ServerPage() {
   const server = servers.find((s) => s.id === id)
   if (!server) {
     return (
-      <Box sx={{ textAlign: 'center', mt: 8 }}>
-        <Typography variant="h6" gutterBottom>
-          {connected ? 'Server not found' : 'Connecting to Skáli…'}
-        </Typography>
+      <EmptyState title={connected ? 'Server not found' : 'Connecting to Skáli…'} busy={!connected}>
         {connected && (
           <Button component={Link} to="/" variant="contained">
             All servers
           </Button>
         )}
-      </Box>
+      </EmptyState>
     )
   }
   return <Detail key={server.id} server={server} game={games.find((g) => g.id === server.game)} />

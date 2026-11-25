@@ -1,8 +1,7 @@
-import AddIcon from '@mui/icons-material/Add'
-import CircleIcon from '@mui/icons-material/Circle'
-import SettingsIcon from '@mui/icons-material/Settings'
-import { AppBar, Box, Button, Container, IconButton, Toolbar, Tooltip, Typography } from '@mui/material'
+import { Button, Container } from '@mui/material'
 import { Link, Route, Routes, useNavigate } from 'react-router'
+import { EmptyState } from './components/EmptyState.tsx'
+import { TopBar } from './layout/TopBar.tsx'
 import { useServers } from './live.tsx'
 import { AddServerDialog } from './components/AddServerDialog.tsx'
 import { NewServerPage } from './pages/NewServerPage.tsx'
@@ -11,7 +10,13 @@ import { ServerPage } from './pages/ServerPage.tsx'
 import { ServersPage } from './pages/ServersPage.tsx'
 import { SettingsPage } from './pages/SettingsPage.tsx'
 
-const NotFound = ({ title }: { title: string }) => <Typography variant="h6">{title}</Typography>
+const NotFound = ({ title }: { title: string }) => (
+  <EmptyState title={title}>
+    <Button component={Link} to="/" variant="contained">
+      All servers
+    </Button>
+  </EmptyState>
+)
 
 function AddRoute() {
   const navigate = useNavigate()
@@ -27,32 +32,7 @@ export function App() {
   const { connected } = useServers()
   return (
     <>
-      <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar sx={{ gap: 1.5 }}>
-          <Typography variant="h6" component={Link} to="/" sx={{ color: 'inherit', textDecoration: 'none' }}>
-            Skáli
-          </Typography>
-          <Tooltip title={connected ? 'Connected' : 'Disconnected'}>
-            <CircleIcon
-              titleAccess={connected ? 'Connected' : 'Disconnected'}
-              sx={{ fontSize: 12 }}
-              color={connected ? 'success' : 'error'}
-            />
-          </Tooltip>
-          <Box sx={{ flexGrow: 1 }} />
-          <Button component={Link} to="/new" startIcon={<AddIcon />}>
-            New server
-          </Button>
-          <Button component={Link} to="/deploys">
-            Deploys
-          </Button>
-          <Tooltip title="Settings">
-            <IconButton component={Link} to="/settings" aria-label="Settings">
-              <SettingsIcon />
-            </IconButton>
-          </Tooltip>
-        </Toolbar>
-      </AppBar>
+      <TopBar connected={connected} />
       <Container maxWidth="lg" sx={{ py: 3 }}>
         <Routes>
           <Route path="/" element={<ServersPage />} />

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -46,6 +46,15 @@ describe('ServerPage', () => {
   it('shows a Restart pending chip next to the status chip when restartPending', () => {
     renderPage({ status: 'running', restartPending: true })
     expect(screen.getByText('Restart pending')).toBeInTheDocument()
+  })
+
+  it('groups name, status, address and actions in a header region', () => {
+    renderPage({ status: 'running' })
+    const header = screen.getByRole('region', { name: 'Survival' })
+    expect(within(header).getByRole('heading', { level: 1, name: 'Survival' })).toBeInTheDocument()
+    expect(within(header).getByText('Running')).toBeInTheDocument()
+    expect(within(header).getByRole('button', { name: 'Copy address' })).toBeInTheDocument()
+    expect(within(header).getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
   it('has Console, Settings and Overview tabs in that order', () => {

@@ -1,32 +1,13 @@
-import ContentCopyIcon from '@mui/icons-material/ContentCopy'
-import DnsIcon from '@mui/icons-material/Dns'
-import PetsIcon from '@mui/icons-material/Pets'
-import SecurityIcon from '@mui/icons-material/Security'
-import ViewInArIcon from '@mui/icons-material/ViewInAr'
-import {
-  Alert,
-  Box,
-  Card,
-  CardActions,
-  CardContent,
-  IconButton,
-  Link as MuiLink,
-  Stack,
-  Tooltip,
-  Typography,
-} from '@mui/material'
-import type { GameId, ServerView } from '@skali/shared'
-import type { ReactElement } from 'react'
+import { Alert, Card, CardActions, CardContent, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { ServerView } from '@skali/shared'
 import { Link } from 'react-router'
-import { ActionButtons, formatUptime, gb, useNow, useServerActions } from './ServerActions.tsx'
+import { palette } from '../theme/tokens.ts'
+import { AddressChip } from './AddressChip.tsx'
+import { GameIcon } from './GameIcon.tsx'
+import { ActionButtons, useNow, useServerActions } from './ServerActions.tsx'
+import { ServerStats } from './ServerStats.tsx'
 import { RestartPendingChip, StatusChip } from './StatusChip.tsx'
-
-const GAME_ICONS: Record<GameId, ReactElement> = {
-  palworld: <PetsIcon />,
-  valheim: <SecurityIcon />,
-  minecraft: <ViewInArIcon />,
-  basic: <DnsIcon />,
-}
 
 export function ServerCard({ server }: { server: ServerView }) {
   const { status } = server
@@ -34,18 +15,20 @@ export function ServerCard({ server }: { server: ServerView }) {
   const now = useNow(live && !!server.startedAt)
   const actions = useServerActions(server)
 
-  const stats: string[] = []
-  if (live) {
-    if (server.cpuPct !== undefined) stats.push(`CPU ${Math.round(server.cpuPct)}%`)
-    if (server.memBytes !== undefined) stats.push(`RAM ${gb(server.memBytes)} GB`)
-  }
-
   return (
-    <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'border-color 160ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        '&:hover': { borderColor: alpha(palette.frost, 0.35) },
+      }}
+    >
       <CardContent sx={{ flexGrow: 1 }}>
-        <Stack spacing={1.25}>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-            <Box sx={{ color: 'text.secondary', display: 'flex' }}>{GAME_ICONS[server.game]}</Box>
+        <Stack spacing={1.75}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+            <GameIcon game={server.game} />
             <MuiLink
               component={Link}
               to={`/servers/${encodeURIComponent(server.id)}`}
@@ -57,26 +40,11 @@ export function ServerCard({ server }: { server: ServerView }) {
               {server.name}
             </MuiLink>
             <StatusChip status={status} job={server.job} setupPending={server.setupPending} />
-            {server.restartPending && <RestartPendingChip />}
           </Stack>
 
-          <Stack direction="row" spacing={2} sx={{ alignItems: "center", minHeight: 24 }}>
-            {live && server.startedAt && (
-              <Typography variant="body2" color="text.secondary">
-                {formatUptime(server.startedAt, now)}
-              </Typography>
-            )}
-            {server.players && (
-              <Tooltip title="Players online">
-                <Typography variant="body2">{`${server.players.online}/${server.players.max}`}</Typography>
-              </Tooltip>
-            )}
-            {stats.length > 0 && (
-              <Typography variant="body2" color="text.secondary">
-                {stats.join(' · ')}
-              </Typography>
-            )}
-          </Stack>
+          {server.restartPending && <RestartPendingChip sx={{ alignSelf: 'flex-start' }} />}
+
+          <ServerStats server={server} now={now} />
 
           {server.crashPaused && (
             <Typography variant="body2" color="error">
@@ -89,20 +57,11 @@ export function ServerCard({ server }: { server: ServerView }) {
             </Alert>
           )}
 
-          <Stack direction="row" sx={{ alignItems: "center" }}>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {server.connectAddress}
-            </Typography>
-            <Tooltip title="Copy address">
-              <IconButton size="small" aria-label="Copy address" onClick={actions.copyAddress}>
-                <ContentCopyIcon fontSize="inherit" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
+          <AddressChip address={server.connectAddress} onCopy={actions.copyAddress} />
         </Stack>
       </CardContent>
 
-      <CardActions sx={{ px: 2, pb: 2, gap: 1 }}>
+      <CardActions sx={{ px: 2.5, pb: 2.5, pt: 0, gap: 1 }}>
         <ActionButtons server={server} actions={actions} />
       </CardActions>
 
