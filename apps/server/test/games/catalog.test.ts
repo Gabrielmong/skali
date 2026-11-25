@@ -30,6 +30,20 @@ describe("catalog", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("gives Palworld and Valheim Steam header art, and none for Minecraft", () => {
+    const [pal, val, mc] = catalog();
+    expect(pal.art).toMatch(/^https:\/\/shared\.akamai\.steamstatic\.com\/.*\/1623730\/.*header\.jpg/);
+    expect(val.art).toMatch(/^https:\/\/shared\.akamai\.steamstatic\.com\/.*\/892970\/.*header\.jpg/);
+    expect(mc.art).toBeUndefined();
+  });
+
+  it("passes generated art through, only as https Steam CDN URLs", () => {
+    const rest = catalog().slice(3);
+    const withArt = rest.filter((e) => e.art);
+    expect(withArt.length).toBeGreaterThan(rest.length * 0.9);
+    for (const e of withArt) expect(e.art).toMatch(/^https:\/\/[a-z0-9.-]+\.(steamstatic|akamaihd)\.(com|net)\//);
+  });
+
   it("credits LinuxGSM", () => {
     expect(raw.source).toMatch(/LinuxGSM/);
   });

@@ -1,34 +1,72 @@
-import StarIcon from '@mui/icons-material/Star'
+import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import SearchIcon from '@mui/icons-material/Search'
 import {
   Alert,
   Box,
   Button,
   Card,
-  CardActionArea,
   CardContent,
   CircularProgress,
   Divider,
-  List,
-  ListItemButton,
-  ListItemText,
+  InputAdornment,
+  Skeleton,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import type { CatalogEntry } from '@skali/shared'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ApiError, getCatalog, steamAppInfo } from '../api.ts'
+import { GameCard } from '../components/catalog/GameCard.tsx'
+import { displayName } from '../components/catalog/gameName.ts'
 import { SetupDialog } from '../components/setup/SetupDialog.tsx'
+import { palette } from '../theme/tokens.ts'
 
 const MAX_APP_ID = 2 ** 31
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+const gridOf = (min: number) =>
+  ({ display: 'grid', gap: 2, gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${min}px), 1fr))` }) as const
 
 type Lookup =
   | { state: 'idle' }
   | { state: 'busy' }
   | { state: 'found'; entry: CatalogEntry; windows: boolean }
   | { state: 'error'; message: string }
+
+/** A titled gallery section (a region named by its heading) with a count badge and a one-line hint. */
+function Section({ title, count, hint, children }: { title: string; count: number; hint: string; children: ReactNode }) {
+  const id = useId()
+  return (
+    <Box component="section" aria-labelledby={id}>
+      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mb: 0.25 }}>
+        <Typography id={id} variant="h6" component="h2">
+          {title}
+        </Typography>
+        <Box
+          component="span"
+          sx={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'text.secondary',
+            px: 1,
+            py: 0.125,
+            borderRadius: 999,
+            bgcolor: alpha(palette.line, 0.1),
+          }}
+        >
+          {count}
+        </Box>
+      </Stack>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {hint}
+      </Typography>
+      {children}
+    </Box>
+  )
+}
 
 export function NewServerPage() {
   const [catalog, setCatalog] = useState<CatalogEntry[] | null>(null)
@@ -38,6 +76,7 @@ export function NewServerPage() {
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' })
   const lookupSeq = useRef(0)
   const [selected, setSelected] = useState<CatalogEntry | null>(null)
+  const otherId = useId()
 
   useEffect(() => {
     let alive = true
@@ -51,7 +90,9 @@ export function NewServerPage() {
   }, [])
 
   const q = search.trim().toLowerCase()
-  const shown = (catalog ?? []).filter((e) => q === '' || e.name.toLowerCase().includes(q))
+  const shown = (catalog ?? []).filter(
+    (e) => q === '' || e.name.toLowerCase().includes(q) || displayName(e.name).toLowerCase().includes(q),
+  )
   const stars = shown.filter((e) => e.star)
   const others = shown.filter((e) => !e.star)
 
@@ -80,93 +121,138 @@ export function NewServerPage() {
   }
 
   return (
-    <Stack spacing={3}>
-      <Box>
-        <Typography variant="h5">New server</Typography>
-        <Typography color="text.secondary">Pick a game and Skáli installs and sets up the server.</Typography>
-      </Box>
-      <TextField
-        label="Search games"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        fullWidth
-      />
+    <Stack spacing={4}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h4" component="h1">
+            New server
+          </Typography>
+          <Typography color="text.secondary">Pick a game and Skáli installs and sets up the server.</Typography>
+        </Box>
+        <TextField
+          label="Search games"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          fullWidth
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'text.secondary' }} />
+                </InputAdornment>
+              ),
+              sx: { bgcolor: alpha(palette.surface, 0.85) },
+            },
+          }}
+        />
+      </Stack>
+
       {error && <Alert severity="error">{error}</Alert>}
-      {!error && catalog === null && <CircularProgress size={24} />}
-      {stars.length > 0 && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-          {stars.map((e) => (
-            <Card key={e.name} variant="outlined">
-              <CardActionArea onClick={() => setSelected(e)} aria-label={e.name}>
-                <CardContent>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <StarIcon fontSize="small" color="warning" />
-                    <Typography variant="h6">{e.name}</Typography>
-                  </Stack>
-                </CardContent>
-              </CardActionArea>
-            </Card>
+      {!error && catalog === null && (
+        <Box aria-busy sx={gridOf(230)}>
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} variant="rounded" sx={{ height: 'auto', aspectRatio: '460 / 290', borderRadius: 2.5 }} />
           ))}
         </Box>
       )}
-      {others.length > 0 && (
-        <List dense sx={{ border: 1, borderColor: 'divider', borderRadius: 1, maxHeight: 360, overflow: 'auto' }}>
-          {others.map((e) => (
-            <ListItemButton key={`${e.appId}`} onClick={() => setSelected(e)}>
-              <ListItemText primary={e.name} />
-            </ListItemButton>
-          ))}
-        </List>
-      )}
-      {catalog !== null && shown.length === 0 && <Typography color="text.secondary">No games match.</Typography>}
 
-      <Divider />
-      <Stack spacing={1.5}>
-        <Typography variant="subtitle1">Other Steam dedicated server</Typography>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-          <TextField
-            label="Other Steam app ID"
-            value={appId}
-            onChange={(e) => {
-              lookupSeq.current++
-              setAppId(e.target.value)
-              setLookup({ state: 'idle' })
-            }}
-            slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-            size="small"
-          />
-          <Button variant="outlined" disabled={!idOk || lookup.state === 'busy'} onClick={() => void doLookup()}>
-            Look up
-          </Button>
-        </Stack>
-        {lookup.state === 'busy' && <CircularProgress size={20} />}
-        {lookup.state === 'found' && (
-          <Stack spacing={0.5}>
-            <Typography>{lookup.entry.name}</Typography>
-            {!lookup.windows && (
-              <Typography color="error">No Windows build — this server can&apos;t run here</Typography>
-            )}
-          </Stack>
-        )}
-        {lookup.state === 'error' && <Typography color="error">{lookup.message}</Typography>}
-        {lookup.state !== 'idle' && lookup.state !== 'busy' && (
-          <Box>
-            <Button
-              variant="contained"
-              disabled={lookup.state !== 'found' || !lookup.windows}
-              onClick={() => lookup.state === 'found' && lookup.entry.appId === idNum && setSelected(lookup.entry)}
-            >
-              Set up
-            </Button>
+      {stars.length > 0 && (
+        <Section title="Built in" count={stars.length} hint="Full support: tailored settings, console and config files">
+          <Box sx={gridOf(300)}>
+            {stars.map((e) => (
+              <GameCard key={e.name} entry={e} featured onSelect={setSelected} />
+            ))}
           </Box>
-        )}
-      </Stack>
+        </Section>
+      )}
 
-      <Box>
-        <Button component={Link} to="/add">
-          Add an existing folder instead
-        </Button>
-      </Box>
+      {others.length > 0 && (
+        <Section title="Steam servers" count={others.length} hint="Installed with SteamCMD and run as a generic server">
+          <Box sx={gridOf(230)}>
+            {others.map((e) => (
+              <GameCard key={`${e.appId}`} entry={e} onSelect={setSelected} />
+            ))}
+          </Box>
+        </Section>
+      )}
+
+      {catalog !== null && shown.length === 0 && (
+        <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+          {`No games match “${search.trim()}”.`}
+        </Typography>
+      )}
+
+      <Card component="section" aria-labelledby={otherId}>
+        <CardContent>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={{ xs: 3, md: 4 }}
+            divider={<Divider flexItem orientation="vertical" sx={{ display: { xs: 'none', md: 'block' } }} />}
+          >
+            <Stack spacing={1.5} sx={{ flex: 1 }}>
+              <Box>
+                <Typography id={otherId} variant="h6" component="h2">
+                  Other Steam dedicated server
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Not in the list? Look it up by its Steam app ID.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+                <TextField
+                  label="Other Steam app ID"
+                  value={appId}
+                  onChange={(e) => {
+                    lookupSeq.current++
+                    setAppId(e.target.value)
+                    setLookup({ state: 'idle' })
+                  }}
+                  slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+                  size="small"
+                />
+                <Button variant="outlined" disabled={!idOk || lookup.state === 'busy'} onClick={() => void doLookup()}>
+                  Look up
+                </Button>
+              </Stack>
+              {lookup.state === 'busy' && <CircularProgress size={20} />}
+              {lookup.state === 'found' && (
+                <Stack spacing={0.5}>
+                  <Typography sx={{ fontWeight: 600 }}>{lookup.entry.name}</Typography>
+                  {!lookup.windows && (
+                    <Typography color="error">No Windows build — this server can&apos;t run here</Typography>
+                  )}
+                </Stack>
+              )}
+              {lookup.state === 'error' && <Typography color="error">{lookup.message}</Typography>}
+              {lookup.state !== 'idle' && lookup.state !== 'busy' && (
+                <Box>
+                  <Button
+                    variant="contained"
+                    disabled={lookup.state !== 'found' || !lookup.windows}
+                    onClick={() => lookup.state === 'found' && lookup.entry.appId === idNum && setSelected(lookup.entry)}
+                  >
+                    Set up
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+
+            <Stack spacing={1.5} sx={{ flex: 1, alignItems: 'flex-start' }}>
+              <Box>
+                <Typography variant="h6" component="h2">
+                  Already installed?
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Point Skáli at a server folder you already have.
+                </Typography>
+              </Box>
+              <Button component={Link} to="/add" variant="outlined" startIcon={<FolderOpenIcon />}>
+                Add an existing folder instead
+              </Button>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
 
       {selected && <SetupDialog open entry={selected} onClose={() => setSelected(null)} />}
     </Stack>

@@ -10,7 +10,16 @@ Rerun (needs network access and a SteamCMD):
 
     node tools/catalog/generate.mjs <path-to-steamcmd.exe> [out.json]
 
-This is a developer tool: the server and its tests never run it or touch the network for the catalog.
+`art.mjs` then adds each entry's `art`: the Steam header image of the game the server is for (dedicated-server apps
+have no store art). It looks the game up with the Steam store search, accepting only an exact name match, with an
+`OVERRIDES` table for the rest; it needs network access but no SteamCMD. Rerun it after `generate.mjs`:
+
+    node tools/catalog/art.mjs [catalog.json]
+
+Images are loaded by the viewer's browser straight from Steam's CDN; a card without art (or offline) falls back to the
+game's initials.
+
+These are developer tools: the server and its tests never run it or touch the network for the catalog.
 Review the diff of `catalog.json` before committing it.
 
 ## Attribution

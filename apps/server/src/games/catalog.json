@@ -4,7 +4,8 @@
   "entries": [
     {
       "appId": 294420,
-      "name": "7 Days to Die Dedicated Server"
+      "name": "7 Days to Die Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/251570/header.jpg?t=1793815172"
     },
     {
       "appId": 985050,
@@ -16,11 +17,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/977050/header.jpg?t=1706328408"
     },
     {
       "appId": 2239530,
-      "name": "American Truck Simulator Dedicated Server"
+      "name": "American Truck Simulator Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/270880/a80e5a18363259677ca96c2a39503ea595d2a45f/header.jpg?t=1794418935"
     },
     {
       "appId": 376030,
@@ -38,7 +41,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/346110/header.jpg?t=1793226330"
     },
     {
       "appId": 233780,
@@ -50,15 +54,18 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/107410/header.jpg?t=1786458620"
     },
     {
       "appId": 1874900,
-      "name": "Arma Reforger Server"
+      "name": "Arma Reforger Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1874880/header.jpg?t=1793882747"
     },
     {
       "appId": 302550,
-      "name": "Assetto Corsa Dedicated Server"
+      "name": "Assetto Corsa Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/244210/header.jpg?t=1793288663"
     },
     {
       "appId": 565060,
@@ -70,15 +77,18 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/445220/header.jpg?t=1762761602"
     },
     {
       "appId": 416880,
-      "name": "Ballistic Overkill Dedicated Server"
+      "name": "Ballistic Overkill Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/296300/header.jpg?t=1676292219"
     },
     {
       "appId": 1026340,
-      "name": "Barotrauma Dedicated Server"
+      "name": "Barotrauma Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/602960/header.jpg?t=1795025064"
     },
     {
       "appId": 817300,
@@ -90,7 +100,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/632730/header.jpg?t=1668176154"
     },
     {
       "appId": 346680,
@@ -102,7 +113,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/362890/d20df1f51d7569184d35367daaed267ec078a6a3/header_alt_assets_3.jpg?t=1794939413"
     },
     {
       "appId": 228780,
@@ -114,7 +126,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/225600/header.jpg?t=1678231957"
     },
     {
       "appId": 475370,
@@ -126,7 +139,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/346330/header.jpg?t=1730328885"
     },
     {
       "appId": 220070,
@@ -144,7 +158,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/219640/header.jpg?t=1710276094"
     },
     {
       "appId": 383410,
@@ -156,11 +171,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/355180/header.jpg?t=1771185738"
     },
     {
       "appId": 748090,
-      "name": "Colony Survival Dedicated Server"
+      "name": "Colony Survival Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/366090/header.jpg?t=1787307261"
     },
     {
       "appId": 443030,
@@ -178,7 +195,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/440900/bae6def963ca0dbf5ee4b7768f3fcc0e99458380/header_alt_assets_10.jpg?t=1794495825"
     },
     {
       "appId": 1963720,
@@ -190,7 +208,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1621690/header.jpg?t=1791454740"
     },
     {
       "appId": 730,
@@ -202,7 +221,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/162664aa5da85f418105350c5d67ca565f6c3713/header.jpg?t=1793054556"
     },
     {
       "appId": 740,
@@ -214,7 +234,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/162664aa5da85f418105350c5d67ca565f6c3713/header.jpg?t=1793054556"
     },
     {
       "appId": 232330,
@@ -226,11 +247,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/240/header.jpg?t=1745368575"
     },
     {
       "appId": 1670340,
-      "name": "Craftopia Dedicated Server"
+      "name": "Craftopia Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1307550/361f627dbe3904698b178e213e2e29c0818d077e/header.jpg?t=1789461983"
     },
     {
       "appId": 232290,
@@ -242,7 +265,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/300/header.jpg?t=1763407002"
     },
     {
       "appId": 1088320,
@@ -260,7 +284,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1088090/header.jpg?t=1780933791"
     },
     {
       "appId": 462310,
@@ -272,7 +297,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/447820/header.jpg?t=1738783161"
     },
     {
       "appId": 223350,
@@ -284,11 +310,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/221100/header.jpg?t=1792059745"
     },
     {
       "appId": 343050,
-      "name": "Don't Starve Together Dedicated Server"
+      "name": "Don't Starve Together Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/322330/050ea9c51a4e96f707309d33b7cdd38e0a6cbfff/header_alt_assets_51.jpg?t=1793044716"
     },
     {
       "appId": 317800,
@@ -300,7 +328,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/317360/header.jpg?t=1777514042"
     },
     {
       "appId": 17585,
@@ -312,11 +341,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/17580/header.jpg?t=1786744734"
     },
     {
       "appId": 739590,
-      "name": "Eco Server"
+      "name": "Eco Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/382310/669bd5d9c8d2469a776d81011670f2889fac86b0/header.jpg?t=1780512554"
     },
     {
       "appId": 460040,
@@ -328,11 +359,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/17740/header.jpg?t=1667065741"
     },
     {
       "appId": 1948160,
-      "name": "Euro Truck Simulator 2 Dedicated Server"
+      "name": "Euro Truck Simulator 2 Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/227300/9a81dc3126c56637297b654f9dcac057cfd79b77/header.jpg?t=1794502925"
     },
     {
       "appId": 295230,
@@ -344,7 +377,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/265630/header.jpg?t=1783702238"
     },
     {
       "appId": 4020,
@@ -356,7 +390,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4000/header.jpg?t=1776868682"
     },
     {
       "appId": 232370,
@@ -368,7 +403,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/320/header.jpg?t=1749481506"
     },
     {
       "appId": 255470,
@@ -380,7 +416,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/360/header.jpg?t=1745368549"
     },
     {
       "appId": 90,
@@ -392,7 +429,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/70/header.jpg?t=1745368462"
     },
     {
       "appId": 405100,
@@ -410,7 +448,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/393420/header.jpg?t=1597169414"
     },
     {
       "appId": 1045940,
@@ -428,7 +467,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/523660/0810230650f94d3d2beea69bf253502b5bcb5629/header.jpg?t=1760031947"
     },
     {
       "appId": 2728330,
@@ -458,7 +498,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/222880/header.jpg?t=1758742858"
     },
     {
       "appId": 581330,
@@ -476,7 +517,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/581320/5cea6f39f733394deda9f85e36722d4ca5e3db5f/header.jpg?t=1791994390"
     },
     {
       "appId": 673990,
@@ -488,7 +530,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/673560/8e7aa1b89b681e5abd17fcf41683a809097cbf83/header.jpg?t=1791367605"
     },
     {
       "appId": 869800,
@@ -500,15 +543,18 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/869480/header.jpg?t=1765499124"
     },
     {
       "appId": 261140,
-      "name": "Just Cause 2: Multiplayer - Dedicated Server"
+      "name": "Just Cause 2: Multiplayer - Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/259080/header.jpg?t=1572375602"
     },
     {
       "appId": 619960,
-      "name": "Just Cause™ 3: Multiplayer - Dedicated Server"
+      "name": "Just Cause™ 3: Multiplayer - Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/225540/header.jpg?t=1782912719"
     },
     {
       "appId": 232130,
@@ -520,7 +566,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/232090/header.jpg?t=1774538987"
     },
     {
       "appId": 222860,
@@ -532,7 +579,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/550/header.jpg?t=1772742214"
     },
     {
       "appId": 222840,
@@ -544,7 +592,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/500/header.jpg?t=1745368560"
     },
     {
       "appId": 1136190,
@@ -556,7 +605,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1012110/9a420da37d6a659b3bfeb4d826314e740da40baa/header.jpg?t=1790947657"
     },
     {
       "appId": 629800,
@@ -574,7 +624,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/629760/header.jpg?t=1777933284"
     },
     {
       "appId": 4940,
@@ -586,11 +637,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4920/5cbc4163b8dff42533739cfc1d57655c08ffe79f/header_alt_assets_0.jpg?t=1794890308"
     },
     {
       "appId": 1169370,
-      "name": "Necesse Dedicated Server"
+      "name": "Necesse Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1169040/4b2e7f5253b4595a523e5c8b27a8ea6214e14ac6/header_alt_assets_5.jpg?t=1795531087"
     },
     {
       "appId": 317670,
@@ -602,7 +655,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/224260/header.jpg?t=1696263772"
     },
     {
       "appId": 313900,
@@ -614,7 +668,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/310110/header.jpg?t=1533864698"
     },
     {
       "appId": 111710,
@@ -626,7 +681,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/17710/header.jpg?t=1787551490"
     },
     {
       "appId": 950900,
@@ -644,7 +700,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/736590/f97103050391e071a864ddd748e3c3f32b6ebe7d/header.jpg?t=1779659854"
     },
     {
       "appId": 622970,
@@ -656,7 +713,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/555160/header.jpg?t=1770745729"
     },
     {
       "appId": 17575,
@@ -668,19 +726,23 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/17570/header.jpg?t=1755116237"
     },
     {
       "appId": 332670,
-      "name": "Project CARS - Dedicated Server"
+      "name": "Project CARS - Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/234630/header.jpg?t=1667844333"
     },
     {
       "appId": 413770,
-      "name": "Project CARS 2 - Dedicated Server"
+      "name": "Project CARS 2 - Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/378860/header.jpg?t=1663714740"
     },
     {
       "appId": 380870,
-      "name": "Project Zomboid Dedicated Server"
+      "name": "Project Zomboid Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/108600/header.jpg?t=1794338497"
     },
     {
       "appId": 2210,
@@ -692,15 +754,18 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2210/header.jpg?t=1664372514"
     },
     {
       "appId": 349090,
-      "name": "Quake Live Dedicated Server"
+      "name": "Quake Live Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/282440/header.jpg?t=1742481724"
     },
     {
       "appId": 339010,
-      "name": "Rising World Dedicated Server"
+      "name": "Rising World Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/324080/header.jpg?t=1788810096"
     },
     {
       "appId": 4019830,
@@ -712,11 +777,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1374490/3e27915a647dbf05e17f2ff98d33c9a0765da539/header.jpg?t=1794565381"
     },
     {
       "appId": 270150,
-      "name": "RUNNING WITH RIFLES"
+      "name": "RUNNING WITH RIFLES",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/270150/f8d3fc2eb5e79d7e3fad40aceec7d4220f23e2fe/header.jpg?t=1772982285"
     },
     {
       "appId": 258550,
@@ -734,7 +801,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/252490/header.jpg?t=1781536981"
     },
     {
       "appId": 1690800,
@@ -746,7 +814,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/526870/header.jpg?t=1791192059"
     },
     {
       "appId": 996560,
@@ -758,11 +827,13 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/700330/57931a3aa75ae823086fd945d891d6a5c98d6172/header.jpg?t=1794595733"
     },
     {
       "appId": 638500,
-      "name": "Soldat Dedicated Server"
+      "name": "Soldat Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/638490/header.jpg?t=1756567404"
     },
     {
       "appId": 3017300,
@@ -780,7 +851,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2646460/8580b9d3a4f484c8e865a51c89c8307521716151/header.jpg?t=1794366233"
     },
     {
       "appId": 244310,
@@ -810,7 +882,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/736220/header.jpg?t=1790967343"
     },
     {
       "appId": 403240,
@@ -828,11 +901,13 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/393380/0b19b50aabea356bd8f534fbe7d6db9bd227810a/header.jpg?t=1792423549"
     },
     {
       "appId": 1058020,
-      "name": "STAR WARS™ Battlefront (Classic, 2004)"
+      "name": "STAR WARS™ Battlefront (Classic, 2004)",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1058020/header.jpg?t=1741728874"
     },
     {
       "appId": 6030,
@@ -844,7 +919,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6030/header.jpg?t=1741814017"
     },
     {
       "appId": 6020,
@@ -856,15 +932,18 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6020/header.jpg?t=1741814908"
     },
     {
       "appId": 211820,
-      "name": "Starbound"
+      "name": "Starbound",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/211820/3ec8855d056d8695de0256594f893a9e3cb826e3/header.jpg?t=1782391980"
     },
     {
       "appId": 600760,
-      "name": "Stationeers Dedicated Server"
+      "name": "Stationeers Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/544550/header.jpg?t=1787270003"
     },
     {
       "appId": 974130,
@@ -882,11 +961,13 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/889400/header.jpg?t=1550760540"
     },
     {
       "appId": 1502300,
-      "name": "Survive the Nights Dedicated Server"
+      "name": "Survive the Nights Dedicated Server",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/541300/bc791c6873199ead0b560f2b4472ae911275e77d/header_alt_assets_11.jpg?t=1766055218"
     },
     {
       "appId": 276060,
@@ -898,7 +979,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/225840/header.jpg?t=1794376667"
     },
     {
       "appId": 3557020,
@@ -910,7 +992,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3545060/cede55b7156e2fc893d6eef6ecbe9c6cdfe52e9b/header.jpg?t=1794697714"
     },
     {
       "appId": 232250,
@@ -922,15 +1005,18 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/440/header.jpg?t=1757348372"
     },
     {
       "appId": 380840,
-      "name": "Teeworlds"
+      "name": "Teeworlds",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/380840/header.jpg?t=1578354106"
     },
     {
       "appId": 105600,
-      "name": "Terraria"
+      "name": "Terraria",
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/105600/header.jpg?t=1792530636"
     },
     {
       "appId": 2334200,
@@ -948,7 +1034,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2285150/7a625692b42e4ebfce79e723b8f6a846aa4241a2/header.jpg?t=1779699935"
     },
     {
       "appId": 412680,
@@ -960,7 +1047,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/376210/header.jpg?t=1653237914"
     },
     {
       "appId": 439660,
@@ -978,7 +1066,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/394690/header.jpg?t=1777941455"
     },
     {
       "appId": 1110390,
@@ -990,7 +1079,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/304930/161ec2d6ace8a03afdb7a423510ff8f7d8b301ba/header.jpg?t=1783436894"
     },
     {
       "appId": 1136510,
@@ -1002,7 +1092,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/671610/header.jpg?t=1757726652"
     },
     {
       "appId": 402370,
@@ -1020,7 +1111,8 @@
           "purpose": "Query",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/366220/header.jpg?t=1781884639"
     },
     {
       "appId": 17505,
@@ -1032,7 +1124,8 @@
           "purpose": "Game",
           "forward": true
         }
-      ]
+      ],
+      "art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/17500/header.jpg?t=1773108957"
     }
   ]
 }

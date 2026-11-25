@@ -97,7 +97,8 @@ export interface InstallRequest {
   acceptEula?: boolean; // minecraft: must be true
 }
 export interface UpdateRequest { minecraft?: { flavour: MinecraftFlavour; version: string } }
-export interface CatalogEntry { appId: number | null; game: GameId; name: string; star: boolean; ports?: PortSpec[]; exeHint?: string; notes?: string }
+/** `art`: the game's Steam header image URL (460x215), when known. */
+export interface CatalogEntry { appId: number | null; game: GameId; name: string; star: boolean; ports?: PortSpec[]; exeHint?: string; notes?: string; art?: string }
 export interface SteamAppInfo { appId: number; name: string; windows: boolean }
 export interface PortClash { port: number; protocol: "udp" | "tcp"; reason: string }
 export interface ToolsStatus { steamcmd: boolean; java: number[] }

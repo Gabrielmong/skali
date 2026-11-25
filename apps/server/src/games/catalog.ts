@@ -7,11 +7,25 @@ interface RawEntry {
   ports?: PortSpec[];
   exeHint?: string;
   notes?: string;
+  /** The base game's Steam header image (tools/catalog/art.mjs). */
+  art?: string;
 }
 
 const STARRED: CatalogEntry[] = [
-  { appId: 2394010, game: "palworld", name: "Palworld", star: true },
-  { appId: 896660, game: "valheim", name: "Valheim", star: true },
+  {
+    appId: 2394010,
+    game: "palworld",
+    name: "Palworld",
+    star: true,
+    art: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1623730/6912f19c43a95ff5fe514eedd35e68bf12335459/header.jpg",
+  },
+  {
+    appId: 896660,
+    game: "valheim",
+    name: "Valheim",
+    star: true,
+    art: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/892970/df65cafab20dae97a243c7cc988e8bf959e4b906/header.jpg",
+  },
   { appId: null, game: "minecraft", name: "Minecraft", star: true },
 ];
 

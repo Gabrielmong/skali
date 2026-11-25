@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { CatalogEntry } from '@skali/shared'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -51,6 +51,29 @@ describe('NewServerPage', () => {
     expect(screen.getByText("Garry's Mod")).toBeInTheDocument()
     expect(screen.queryByText('Palworld')).toBeNull()
     expect(screen.queryByText('Team Fortress 2')).toBeNull()
+  })
+
+  it('splits built-in games from the Steam servers, with counts', async () => {
+    renderPage()
+    const builtIn = await screen.findByRole('region', { name: /Built in/ })
+    expect(within(builtIn).getByRole('button', { name: 'Palworld' })).toBeInTheDocument()
+    expect(within(builtIn).queryByRole('button', { name: 'Team Fortress 2' })).toBeNull()
+    const steam = screen.getByRole('region', { name: /Steam servers/ })
+    expect(within(steam).getByRole('button', { name: 'Team Fortress 2' })).toBeInTheDocument()
+    expect(within(steam).getByText('2')).toBeInTheDocument()
+  })
+
+  it('says when nothing matches the search', async () => {
+    renderPage()
+    await userEvent.type(await screen.findByLabelText('Search games'), 'zzz')
+    expect(screen.getByText('No games match “zzz”.')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: /Built in/ })).toBeNull()
+  })
+
+  it('opens setup from a game card', async () => {
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: 'Team Fortress 2' }))
+    expect(await screen.findByLabelText(/^Name/)).toBeInTheDocument()
   })
 
   it('links to adding an existing folder', async () => {
