@@ -12,6 +12,8 @@ export const palette = {
   muted: '#8e98b3',
   /** Accent: frost on the longhouse roof. Never used for status. */
   frost: '#5cc8ff',
+  /** Status "info" (jobs, restart pending): violet, so it never reads as the frost accent. */
+  info: '#9d8cff',
   /** Running servers. */
   on: '#2fd38a',
   alarm: '#ff6b6b',

@@ -14,6 +14,7 @@ export const theme = createTheme({
         primary: { main: palette.frost, contrastText: palette.night },
         success: { main: palette.on, contrastText: palette.night },
         error: { main: palette.alarm },
+        info: { main: palette.info, contrastText: palette.night },
         background: { default: palette.night, paper: palette.surface },
         text: { primary: palette.text, secondary: palette.muted },
         divider: alpha(palette.line, 0.14),

@@ -33,8 +33,17 @@ export const components: Components<Theme> = {
   },
   MuiButton: {
     styleOverrides: {
-      root: { borderRadius: 8, transition: `background-color 160ms ${ease}, border-color 160ms ${ease}, transform 120ms ${ease}` },
-      outlined: { borderColor: alpha(palette.line, 0.2), '&:hover': { borderColor: alpha(palette.frost, 0.6) } },
+      root: {
+        borderRadius: 8,
+        transition: `background-color 160ms ${ease}, border-color 160ms ${ease}, transform 120ms ${ease}`,
+        // Default-colour outlined buttons only: Stop/Delete (color="error") keep MUI's red outline.
+        variants: [
+          {
+            props: { variant: 'outlined', color: 'primary' },
+            style: { borderColor: alpha(palette.line, 0.2), '&:hover': { borderColor: alpha(palette.frost, 0.6) } },
+          },
+        ],
+      },
       contained: { boxShadow: 'none', '&:hover': { boxShadow: `0 6px 20px ${alpha(palette.frost, 0.25)}` } },
     },
   },
