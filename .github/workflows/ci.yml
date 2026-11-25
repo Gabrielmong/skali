@@ -29,6 +29,14 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # better-sqlite3 has no prebuilt binary, so install compiles it with node-gyp. The node-gyp bundled with
+      # pnpm 9 (v10) can't recognise Visual Studio 2026 (version 18) on the windows-latest image; node-gyp 13
+      # can. pnpm's node-gyp shim uses npm_config_node_gyp when it is set.
+      - name: Use a node-gyp that knows Visual Studio 2026
+        run: |
+          npm install -g node-gyp@13
+          "npm_config_node_gyp=$(npm root -g)\node-gyp\bin\node-gyp.js" >> $env:GITHUB_ENV
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
