@@ -3,7 +3,7 @@ import { components } from './theme/components.ts'
 import { FONT_BODY, FONT_DISPLAY, palette } from './theme/tokens.ts'
 
 /**
- * "Longhouse at night": the IoT app's deep indigo surfaces with a frost accent, green for running servers.
+ * "Server room at night": the IoT app's deep indigo surfaces with a frost accent, green for running servers.
  * Headings use Bricolage Grotesque; everything else uses Figtree.
  * Dark only: with a light scheme too, MUI follows the OS setting and a light-mode PC gets dark text on the night background.
  */
