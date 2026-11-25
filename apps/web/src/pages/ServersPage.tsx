@@ -1,5 +1,6 @@
 import { Alert, Box, Button, Typography } from '@mui/material'
 import { Link } from 'react-router'
+import { EmptyState } from '../components/EmptyState.tsx'
 import { ServerCard } from '../components/ServerCard.tsx'
 import { useServers } from '../live.tsx'
 
@@ -8,21 +9,16 @@ export function ServersPage() {
 
   if (servers.length === 0) {
     return (
-      <Box sx={{ textAlign: 'center', mt: 8 }}>
-        <Typography variant="h6" gutterBottom>
-          {connected ? 'No servers yet' : 'Connecting to Skáli…'}
-        </Typography>
+      <EmptyState title={connected ? 'No servers yet' : 'Connecting to Skáli…'} busy={!connected}>
         {connected && (
           <>
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              Add a game server you already have installed to manage it here.
-            </Typography>
+            <Typography color="text.secondary">Add a game server you already have installed to manage it here.</Typography>
             <Button component={Link} to="/add" variant="contained">
               Add existing server
             </Button>
           </>
         )}
-      </Box>
+      </EmptyState>
     )
   }
 

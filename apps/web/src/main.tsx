@@ -1,3 +1,5 @@
+import '@fontsource-variable/bricolage-grotesque'
+import '@fontsource-variable/figtree'
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
