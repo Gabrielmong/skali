@@ -29,10 +29,25 @@ const STARRED: CatalogEntry[] = [
   { appId: null, game: "minecraft", name: "Minecraft", star: true },
 ];
 
+/**
+ * Hand corrections on top of the generated list (LinuxGSM's defaults are Linux configs and can be stale). Applied
+ * here, not in catalog.json, so rerunning tools/catalog/generate.mjs keeps them.
+ */
+const CORRECTIONS: Record<number, Partial<Pick<CatalogEntry, "ports">>> = {
+  // Satisfactory 1.0: game traffic on 7777/udp, the HTTPS server API on 7777/tcp, reliable messaging on 8888/tcp.
+  1690800: {
+    ports: [
+      { port: 7777, protocol: "udp", purpose: "Game", forward: true },
+      { port: 7777, protocol: "tcp", purpose: "Server API", forward: true },
+      { port: 8888, protocol: "tcp", purpose: "Reliable messaging", forward: true },
+    ],
+  },
+};
+
 /** The starred built-in games first, then the generated Steam list (see tools/catalog) sorted by name. */
 export function catalog(): CatalogEntry[] {
   const rest: CatalogEntry[] = (raw.entries as RawEntry[])
-    .map((e) => ({ ...e, game: "basic" as const, star: false }))
+    .map((e) => ({ ...e, ...CORRECTIONS[e.appId], game: "basic" as const, star: false }))
     .sort((a, b) => a.name.localeCompare(b.name));
   return [...STARRED, ...rest];
 }

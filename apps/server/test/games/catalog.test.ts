@@ -44,6 +44,15 @@ describe("catalog", () => {
     for (const e of withArt) expect(e.art).toMatch(/^https:\/\/[a-z0-9.-]+\.(steamstatic|akamaihd)\.(com|net)\//);
   });
 
+  it("corrects Satisfactory's ports (1.0 needs 7777 udp+tcp and 8888 tcp, not just 7777 udp)", () => {
+    const sf = catalog().find((e) => e.appId === 1690800);
+    expect(sf?.ports).toEqual([
+      { port: 7777, protocol: "udp", purpose: "Game", forward: true },
+      { port: 7777, protocol: "tcp", purpose: "Server API", forward: true },
+      { port: 8888, protocol: "tcp", purpose: "Reliable messaging", forward: true },
+    ]);
+  });
+
   it("credits LinuxGSM", () => {
     expect(raw.source).toMatch(/LinuxGSM/);
   });
