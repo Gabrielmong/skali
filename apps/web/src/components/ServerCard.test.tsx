@@ -159,6 +159,25 @@ describe('ServerCard', () => {
     expect(screen.getByRole('link', { name: 'Survival' })).toHaveAttribute('href', '/servers/s1')
   })
 
+  it('shows the game art as a banner, in full colour while running', () => {
+    render(
+      <MemoryRouter>
+        <ServerCard server={makeServer({ status: 'running' })} art="https://x.steamstatic.com/mc.jpg" />
+      </MemoryRouter>,
+    )
+    const banner = screen.getByTestId('server-banner')
+    expect(banner).toHaveAttribute('data-live', 'true')
+    expect(banner.querySelector('img')).toHaveAttribute('src', 'https://x.steamstatic.com/mc.jpg')
+  })
+
+  it('dims the banner while stopped, and uses initials without art', () => {
+    renderCard({ status: 'stopped' })
+    const banner = screen.getByTestId('server-banner')
+    expect(banner).toHaveAttribute('data-live', 'false')
+    expect(banner.querySelector('img')).toBeNull()
+    expect(screen.getByText('SU')).toBeInTheDocument()
+  })
+
   it('asks before restarting when players are online', async () => {
     renderCard({ status: 'running', players: { online: 2, max: 10 } })
     await userEvent.click(screen.getByRole('button', { name: 'Restart' }))

@@ -5,9 +5,13 @@ import { hueOf, initials } from './gameName.ts'
 /** Steam header images are 460x215. */
 export const ART_RATIO = '460 / 215'
 
-/** The game's Steam header art, or (no art, offline, broken link) a tinted tile with its initials. Decorative. */
-export function GameArt({ name, art }: { name: string; art?: string | undefined }) {
+/**
+ * The game's Steam header art, or (no art, offline, broken link) a tinted tile with its initials. Decorative.
+ * `fill`: cover the parent box instead of keeping the 460x215 ratio.
+ */
+export function GameArt({ name, art, fill = false }: { name: string; art?: string | undefined; fill?: boolean }) {
   const [failed, setFailed] = useState(false)
+  const size = fill ? { width: '100%', height: '100%' } : { width: '100%', aspectRatio: ART_RATIO }
   if (art && !failed) {
     return (
       <Box
@@ -18,7 +22,7 @@ export function GameArt({ name, art }: { name: string; art?: string | undefined 
         loading="lazy"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
-        sx={{ display: 'block', width: '100%', aspectRatio: ART_RATIO, objectFit: 'cover' }}
+        sx={{ display: 'block', ...size, objectFit: 'cover' }}
       />
     )
   }
@@ -27,7 +31,7 @@ export function GameArt({ name, art }: { name: string; art?: string | undefined 
     <Box
       aria-hidden
       sx={{
-        aspectRatio: ART_RATIO,
+        ...size,
         display: 'grid',
         placeItems: 'center',
         background: `radial-gradient(120% 90% at 20% 10%, hsl(${hue} 55% 34%), hsl(${(hue + 40) % 360} 45% 14%))`,

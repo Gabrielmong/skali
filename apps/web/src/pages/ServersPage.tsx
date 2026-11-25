@@ -1,11 +1,13 @@
 import { Alert, Box, Button, Typography } from '@mui/material'
 import { Link } from 'react-router'
+import { artFor, useCatalog } from '../components/catalog/artFor.ts'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { ServerCard } from '../components/ServerCard.tsx'
 import { useServers } from '../live.tsx'
 
 export function ServersPage() {
   const { servers, connected } = useServers()
+  const catalog = useCatalog()
 
   if (servers.length === 0) {
     return (
@@ -37,7 +39,7 @@ export function ServersPage() {
         }}
       >
         {servers.map((s) => (
-          <ServerCard key={s.id} server={s} />
+          <ServerCard key={s.id} server={s} art={artFor(catalog, s)} />
         ))}
       </Box>
     </>
